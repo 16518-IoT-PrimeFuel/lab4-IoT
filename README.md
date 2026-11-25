@@ -121,10 +121,10 @@ Una fila por falla (4 por nodo, 20 en total).
 | F2 - N2 Secadores | Silenciosa |                           |         |            |                     |        |                       |
 | F3 - N2 Secadores | Seguridad  |                           |         |            |                     |        |                       |
 | F4 - N2 Secadores | Cruzada    |                           |         |            |                     |        |                       |
-| F1 - N3 Perímetro | Visible    |                           |         |            |                     |        |                       |
-| F2 - N3 Perímetro | Silenciosa |                           |         |            |                     |        |                       |
-| F3 - N3 Perímetro | Seguridad  |                           |         |            |                     |        |                       |
-| F4 - N3 Perímetro | Cruzada    |                           |         |            |                     |        |                       |
+| F1 - N3 Perímetro | Visible    | Paso 8: sensores y actuadores | El viento se calcula mal: con el potenciómetro en [posición] la consola muestra `viento=[valor antes]` en vez de [valor esperado], y el LED de riesgo no responde bien al rango 90°–180°. | `PIN_VIENTO=25` es un pin ADC2 (no usable con WiFi encendido) y `map(…, 0, 1023, 0, 360)` ignora que el ADC del ESP32 es de 12 bits (0–4095). | Pin 34 (ADC1) y `map(…, 0, 4095, 0, 359)`; cable `viento:SIG` a `esp:34`. Commit `[hash]`. | Con el gas alto y el potenciómetro en 0 %, 25 %, 50 %, 75 % y 100 % la consola muestra [0, ~90, ~180, ~269, 359]; el LED enciende solo con viento entre 90° y 180°. | Alberto Ponce / Katherine Mejia |
+| F2 - N3 Perímetro | Silenciosa | Paso 10: procesamiento por nodo | Si el broker o el WiFi no están disponibles, el nodo se queda atrapado en `conectar()` y deja de leer el gas y de accionar el LED. Si no hay hora NTP, publica con `ts` cercano a 1970 y el gateway lo rechaza sin avisar. | `conectar()` bloquea el `loop()` con un `while` sin salida y no se valida la hora antes de publicar. | Reconexión sin bloqueo cada 5 s, el LED sigue funcionando y no se publica sin hora válida. Commit `[hash]`. | Con un broker inválido temporal: antes el LED nunca responde; después el LED responde y la consola imprime `Sin broker u hora valida: no se publica`. | Alberto Ponce / Katherine Mejia |
+| F3 - N3 Perímetro | Seguridad  | Paso 4: capa de intercambio | Cualquiera que publique `OFFSET:-10000` en `upc/gc/perimetro/cmd` cambia la calibración y el gas se lee como 0, así que el nodo queda ciego (R10). | El callback acepta `OFFSET:` sin comprobar firma, antigüedad ni rango. | La orden debe ser `OFFSET:<valor>:<ts>:<firma>`, firmada, de menos de 60 s y con valor absoluto de hasta 500. Commit `[hash]`. | Desde HiveMQ se publica `OFFSET:-10000`: antes la consola muestra `Nueva calibracion: -10000.00`; después muestra `Orden rechazada: formato`. | Alberto Ponce / Katherine Mejia |
+| F4 - N3 Perímetro | Cruzada    | Paso 4: capa de intercambio (contrato de tópicos) | Los datos de N3 salen a `upc/gc/perimetro/datos` pero el gateway nunca imprime `OK perimetro`. | El gateway se suscribe a `upc/gc/+/dato` (sin "s"), distinto del contrato `datos`. | En N5: `mqtt.subscribe("upc/gc/+/datos")`. Commit `[hash]` en la rama del gateway. | Antes: HiveMQ muestra los datos y el gateway no responde. Después: el gateway imprime `OK perimetro: [valor] ppm` cada 2 s. | Alberto Ponce (síntoma) / corrige N5 (Joseph) |
 | F1 - N4 Lavador   | Visible    |                           |         |            |                     |        |                       |
 | F2 - N4 Lavador   | Silenciosa |                           |         |            |                     |        |                       |
 | F3 - N4 Lavador   | Seguridad  |                           |         |            |                     |        |                       |
@@ -163,6 +163,9 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | Rama               | PR   | Revisor | Estado |
 | ------------------ | ---- | ------- | ------ |
 | `bugfix/pozas-...` |      |         |        |
+| `bugfix/perimetro-viento-adc` |      |         |        |
+| `bugfix/perimetro-reconexion-y-hora` |      |         |        |
+| `bugfix/perimetro-orden-firmada` |      |         |        |
 
 ## 8. Evidencia del tablero
 

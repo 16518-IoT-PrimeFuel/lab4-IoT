@@ -12,7 +12,7 @@ const char* T_CONC   = "upc/gc/gateway/conc";
 const char* T_ESTADO = "upc/gc/lavador/estado";
 const char* T_ALERTA = "upc/gc/lavador/alerta";
 
-const int PIN_RELE   = 27;
+const int PIN_RELE   = 26;
 const int PIN_CONF   = 14;
 const int PIN_STEP   = 18;
 const int PIN_DIR    = 19;

@@ -55,6 +55,12 @@ String ordenPozas(const String& comando) {
   return comando + "|" + String(ts) + "|" + firmar("pozas|" + comando + "|" + String(ts));
 }
 
+// Orden firmada para N4: "<comando>|<ts>|<firma>", firma = HMAC("lavador|<comando>|<ts>")
+String ordenLavador(const String& comando) {
+  long ts = time(nullptr);
+  return comando + "|" + String(ts) + "|" + firmar("lavador|" + comando + "|" + String(ts));
+}
+
 // Estado real del lavador: lo publica N4 (CONFIRMADO tras encender, OFF al apagar)
 void procesarEstadoLavador(const String& msg) {
   Serial.println("Estado lavador: " + msg);
@@ -212,12 +218,12 @@ void loop() {
 
     // Regla combinada (fog)
     if (!lavadorOn && !ordenPendiente && confirmaciones >= 2 && haciaComunidad) {
-      mqtt.publish("upc/gc/lavador/cmd", "ON", true);
+      mqtt.publish("upc/gc/lavador/cmd", ordenLavador("ON").c_str(), true);
       ordenPendiente = true;
       tOrden = millis();
       Serial.println("Orden: lavador ON (esperando confirmacion)");
     } else if (lavadorOn && !ordenPendiente && todosFrescos && conc < UMBRAL_GAS * 0.8) {
-      mqtt.publish("upc/gc/lavador/cmd", "OFF", true);
+      mqtt.publish("upc/gc/lavador/cmd", ordenLavador("OFF").c_str(), true);
       ordenPendiente = true;
       tOrden = millis();
       Serial.println("Orden: lavador OFF (esperando confirmacion)");

@@ -26,6 +26,9 @@ struct Lectura {
 Lectura pozas, secadores, perimetro;
 int viento = 0;
 bool lavadorOn = false, alerta = false;
+bool ordenPendiente = false;                // ON/OFF enviada, esperando confirmacion de N4
+unsigned long tOrden = 0;
+const unsigned long T_CONF_LAVADOR = 10000; // R5
 const unsigned long CADUCIDAD_MS = 10000;   // decision del grupo, no de la especificacion
 
 bool fresco(const Lectura& l) {
@@ -44,6 +47,12 @@ String firmar(const String& m) {
   char h[17];
   for (int i = 0; i < 8; i++) sprintf(h + 2 * i, "%02x", out[i]);
   return String(h);
+}
+
+// Orden firmada para N1: "<comando>|<ts>|<firma>", firma = HMAC("pozas|<comando>|<ts>")
+String ordenPozas(const String& comando) {
+  long ts = time(nullptr);
+  return comando + "|" + String(ts) + "|" + firmar("pozas|" + comando + "|" + String(ts));
 }
 
 // Extrae el texto de un campo del JSON
@@ -67,11 +76,13 @@ void alRecibir(char* t, byte* p, unsigned int n) {
   if (topico.endsWith("/alerta")) {
     alerta = true;
     Serial.println("ALERTA: " + msg);
-    mqtt.publish("upc/gc/pozas/cmd", "VENT:MAX");   // respuesta de respaldo
+    mqtt.publish("upc/gc/pozas/cmd", ordenPozas("VENT:MAX").c_str());   // respuesta de respaldo
     return;
   }
   if (topico.endsWith("/estado")) {
     Serial.println("Estado lavador: " + msg);
+    // Confirmacion de N4 cierra la espera de la orden
+    if (msg.indexOf("CONFIRMADO") >= 0 || msg.indexOf("\"lavador\":\"OFF\"") >= 0) ordenPendiente = false;
     return;
   }
 
@@ -164,6 +175,14 @@ void loop() {
     Serial.println("Alerta reconocida por el operador");
   }
 
+  // R5: sin confirmacion en 10 s, falla del lavador y ventilacion maxima
+  if (ordenPendiente && millis() - tOrden > T_CONF_LAVADOR) {
+    ordenPendiente = false;
+    alerta = true;
+    Serial.println("ALERTA: falla del lavador (sin confirmacion en 10 s)");
+    mqtt.publish("upc/gc/pozas/cmd", ordenPozas("VENT:MAX").c_str());
+  }
+
   if (millis() - tDecision >= 2000) {
     tDecision = millis();
     bool pozasOK = fresco(pozas), secOK = fresco(secadores), perOK = fresco(perimetro);
@@ -180,14 +199,18 @@ void loop() {
     mqtt.publish("upc/gc/gateway/conc", String(conc, 1).c_str());
 
     // Regla combinada (fog)
-    if (!lavadorOn && confirmaciones >= 2 && haciaComunidad) {
+    if (!lavadorOn && !ordenPendiente && confirmaciones >= 2 && haciaComunidad) {
       mqtt.publish("upc/gc/lavador/cmd", "ON", true);
       lavadorOn = true;
-      Serial.println("Orden: lavador ON");
-    } else if (lavadorOn && todosFrescos && conc < UMBRAL_GAS * 0.8) {
+      ordenPendiente = true;
+      tOrden = millis();
+      Serial.println("Orden: lavador ON (esperando confirmacion)");
+    } else if (lavadorOn && !ordenPendiente && todosFrescos && conc < UMBRAL_GAS * 0.8) {
       mqtt.publish("upc/gc/lavador/cmd", "OFF", true);
       lavadorOn = false;
-      Serial.println("Orden: lavador OFF");
+      ordenPendiente = true;
+      tOrden = millis();
+      Serial.println("Orden: lavador OFF (esperando confirmacion)");
     }
 
     // Semaforo general de la planta

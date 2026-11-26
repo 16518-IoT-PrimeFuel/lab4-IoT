@@ -1,0 +1,46 @@
+22:22:22 === F4 (despues): pozas 1111.1 en /dato y pozas 2222.2 en /datos
+22:22:22 TX upc/gc/pozas/dato {"id":"pozas","ts":1795663342,"valor":1111.1,"unidad":"ppm","calidad":"ok","firma":"654b70e8c193755e"}
+22:22:24 RX upc/gc/gateway/conc 0.0
+22:22:25 TX upc/gc/pozas/datos {"id":"pozas","ts":1795663345,"valor":2222.2,"unidad":"ppm","calidad":"ok","firma":"917ad4a42c7beac6"}
+22:22:28 RX upc/gc/gateway/conc 2222.2
+22:22:31 CAPTURA f4-despues.png
+22:22:31 === F2 (despues): pozas 2450.5 una sola vez y luego 30 s sin datos
+22:22:31 TX upc/gc/pozas/datos {"id":"pozas","ts":1795663351,"valor":2450.5,"unidad":"ppm","calidad":"ok","firma":"be9127dfef7ea713"}
+22:22:31 RX upc/gc/gateway/conc 2222.2
+22:22:35 RX upc/gc/gateway/conc 2450.5
+22:22:38 RX upc/gc/gateway/conc 2450.5
+22:22:42 RX upc/gc/gateway/conc 2450.5
+22:22:45 RX upc/gc/gateway/conc 2450.5
+22:22:49 RX upc/gc/gateway/conc 2450.5
+22:22:52 RX upc/gc/gateway/conc 0.0
+22:22:56 RX upc/gc/gateway/conc 0.0
+22:22:59 RX upc/gc/gateway/conc 0.0
+22:23:02 CAPTURA f2-despues.png
+22:23:02 === F1 (despues): pozas 2500, secadores 2600, perimetro 300 con viento 120; sin respuesta de N4 durante 25 s
+22:23:02 TX upc/gc/pozas/datos {"id":"pozas","ts":1795663382,"valor":2500.0,"unidad":"ppm","calidad":"ok","firma":"83c09f6ec1f42454"}
+22:23:02 TX upc/gc/secadores/datos {"id":"secadores","ts":1795663382,"valor":2600.0,"unidad":"ppm","calidad":"ok","firma":"1994826151ca99b5"}
+22:23:02 TX upc/gc/perimetro/datos {"id":"perimetro","ts":1795663382,"valor":300.0,"viento":120,"unidad":"ppm","calidad":"ok","firma":"319f4fd808ab1b02"}
+22:23:03 RX upc/gc/gateway/conc 2500.0
+22:23:07 RX upc/gc/gateway/conc 2600.0
+22:23:07 RX upc/gc/lavador/cmd ON|1795663363|0fbf34efee050853
+22:23:10 RX upc/gc/gateway/conc 2600.0
+22:23:14 RX upc/gc/gateway/conc 2600.0
+22:23:17 RX upc/gc/gateway/conc 2600.0
+22:23:21 RX upc/gc/gateway/conc 2600.0
+22:23:24 RX upc/gc/gateway/conc 0.0
+22:23:25 RX upc/gc/pozas/cmd VENT:MAX|1795663373|8d17bf7d41f0e187
+22:23:28 RX upc/gc/gateway/conc 0.0
+22:23:29 CAPTURA f1-despues.png
+22:23:29 === F1 (despues): datos de nuevo y N4 simulado publica CONFIRMADO
+22:23:29 TX upc/gc/pozas/datos {"id":"pozas","ts":1795663409,"valor":2500.0,"unidad":"ppm","calidad":"ok","firma":"8a754b9e68fe43d6"}
+22:23:29 TX upc/gc/secadores/datos {"id":"secadores","ts":1795663409,"valor":2600.0,"unidad":"ppm","calidad":"ok","firma":"3ceeaa39acc08ecc"}
+22:23:29 TX upc/gc/perimetro/datos {"id":"perimetro","ts":1795663409,"valor":300.0,"viento":120,"unidad":"ppm","calidad":"ok","firma":"2b16f5c42aa176a1"}
+22:23:31 RX upc/gc/gateway/conc 2600.0
+22:23:32 RX upc/gc/lavador/cmd ON|1795663377|8b29fd5c8771d7e4
+22:23:33 TX upc/gc/lavador/estado {"lavador":"CONFIRMADO"}
+22:23:33 RX upc/gc/lavador/estado {"lavador":"CONFIRMADO"}
+22:23:35 RX upc/gc/gateway/conc 2600.0
+22:23:38 CAPTURA f1-despues-confirmado.png
+22:23:38 TX upc/gc/lavador/cmd (borra el mensaje retenido)
+22:23:38 RX upc/gc/lavador/cmd 
+22:23:38 RX upc/gc/gateway/conc 2600.0

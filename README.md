@@ -77,8 +77,6 @@
 - [6. Pruebas de integración, regresión y ataque](#6-pruebas-de-integración-regresión-y-ataque)
 - [7. Ramas y pull requests](#7-ramas-y-pull-requests)
 - [8. Evidencias](#8-evidencias)
-- [9. Entregables, sesiones y exposición](#9-entregables-sesiones-y-exposición)
-- [10. Estado actual y pendientes](#10-estado-actual-y-pendientes)
 
 ## 1. Contexto y encargo
 

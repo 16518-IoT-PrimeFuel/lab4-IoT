@@ -2,6 +2,7 @@
 // Version corregida por el equipo PrimeFuel (G3, prefijo gc)
 //   F1 (visible)    temperatura en Celsius (DS18B20)
 //   F2 (silenciosa) accion local autonoma: temp OR gas, sin bloquear por WiFi/MQTT, sin publicar sin hora NTP
+//   F3 (seguridad)  ordenes firmadas HMAC y con antiguedad < 60 s (R10)
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <OneWire.h>
@@ -9,9 +10,10 @@
 #include <time.h>
 #include "mbedtls/md.h"
 
-const char* CLAVE   = "costa-norte-gc-6402";
-const char* T_DATOS = "upc/gc/pozas/datos";
-const char* T_CMD   = "upc/gc/pozas/cmd";
+const char* CLAVE    = "costa-norte-gc-6402";
+const char* T_DATOS  = "upc/gc/pozas/datos";
+const char* T_CMD    = "upc/gc/pozas/cmd";
+const char* T_ALERTA = "upc/gc/pozas/alerta";
 
 const int PIN_GAS = 34, PIN_TEMP = 4, PIN_BUZZER = 25, PIN_VENT = 26;
 float umbralGas = 2000;       // ppm (R1)
@@ -37,16 +39,43 @@ String firmar(const String& m) {
   return String(h);
 }
 
+void alertar(const String& texto) {
+  Serial.println(texto);
+  if (mqtt.connected()) mqtt.publish(T_ALERTA, ("{\"alerta\":\"" + texto + "\"}").c_str());
+}
+
+// F3: misma convencion que N4 Lavador -> "<comando>|<ts>|<firma>",
+// firma = HMAC("pozas|<comando>|<ts>"), antiguedad maxima 60 s
+bool ordenValida(const String& comando, long ts, const String& firma) {
+  if (abs((long)time(nullptr) - ts) > 60) return false;
+  return firmar("pozas|" + comando + "|" + String(ts)) == firma;
+}
+
 void alRecibir(char* t, byte* p, unsigned int n) {
   String msg;
   for (unsigned int i = 0; i < n; i++) msg += (char)p[i];
-  if (msg.startsWith("UMBRAL:")) {
-    umbralGas = msg.substring(7).toFloat();
+  msg.trim();
+
+  int p1 = msg.indexOf('|');
+  int p2 = msg.lastIndexOf('|');
+  if (p1 < 0 || p2 <= p1) { alertar("Orden rechazada: formato"); return; }
+
+  String comando = msg.substring(0, p1);
+  long ts = msg.substring(p1 + 1, p2).toInt();
+  String firma = msg.substring(p2 + 1);
+  if (!ordenValida(comando, ts, firma)) { alertar("Orden rechazada: firma invalida o vencida"); return; }
+
+  if (comando.startsWith("UMBRAL:")) {
+    float nuevo = comando.substring(7).toFloat();
+    if (nuevo < 500 || nuevo > 5000) { alertar("Orden rechazada: umbral fuera de rango"); return; }
+    umbralGas = nuevo;
     Serial.println("Nuevo umbral de gas: " + String(umbralGas));
-  } else if (msg == "VENT:MAX") {
+  } else if (comando == "VENT:MAX") {
     ventMax = true;
-  } else if (msg == "VENT:NORMAL") {
+    Serial.println("Orden aceptada: VENT:MAX");
+  } else if (comando == "VENT:NORMAL") {
     ventMax = false;
+    Serial.println("Orden aceptada: VENT:NORMAL");
   }
 }
 

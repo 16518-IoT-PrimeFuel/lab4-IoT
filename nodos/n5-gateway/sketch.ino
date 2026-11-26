@@ -73,9 +73,15 @@ void alRecibir(char* t, byte* p, unsigned int n) {
     Serial.println("RECHAZADO (firma invalida): " + id);
     return;
   }
+  // Hora real y ventana de 60 s en ambos sentidos (R9; misma regla que N1).
+  // Simetrica porque los relojes de los nodos pueden ir adelantados o atrasados.
   long ahora = time(nullptr);
-  if (ahora - ts > 60) {
-    Serial.println("RECHAZADO (mensaje antiguo): " + id);
+  if (ahora < 1700000000) {
+    Serial.println("RECHAZADO: hora no sincronizada");
+    return;
+  }
+  if (ts <= 0 || abs(ahora - ts) > 60) {
+    Serial.println("RECHAZADO: timestamp invalido " + id);
     return;
   }
 
@@ -118,6 +124,13 @@ void setup() {
   pinMode(PIN_ACK, INPUT_PULLUP);
   WiFi.begin("Wokwi-GUEST", "");
   while (WiFi.status() != WL_CONNECTED) delay(200);
+
+  // Hora real por NTP; espera acotada para no bloquear para siempre
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  unsigned long t0 = millis();
+  while (time(nullptr) < 1700000000 && millis() - t0 < 15000) delay(200);
+  if (time(nullptr) < 1700000000) Serial.println("Sin hora NTP: se rechazaran datos");
+
   mqtt.setServer("broker.hivemq.com", 1883);
   mqtt.setBufferSize(512);
   mqtt.setKeepAlive(60);

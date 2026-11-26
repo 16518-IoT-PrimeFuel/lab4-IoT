@@ -60,7 +60,7 @@
 
 | Nodo         | Responsable(s)     | Original (docente)                            | Copia corregida |
 | ------------ | ------------------ | --------------------------------------------- | --------------- |
-| N1 Pozas     | 1 y 2              | https://wokwi.com/projects/481589840859419649 | _<pendiente>_   |
+| N1 Pozas     | 1 y 2              | https://wokwi.com/projects/481589840859419649 | https://wokwi.com/projects/481589840859419649   |
 | N2 Secadores | 3                  | https://wokwi.com/projects/481589918908098561 | https://wokwi.com/projects/481600352780962817  |
 | N3 Perímetro | 4                  | https://wokwi.com/projects/481589993437759489 | _<pendiente>_   |
 | N4 Lavador   | 5 y 6              | https://wokwi.com/projects/481590066854881281 | _<pendiente>_   |

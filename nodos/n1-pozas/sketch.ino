@@ -1,5 +1,6 @@
 // Planta Costa Norte - Nodo 1: Pozas de materia prima
-// Instalacion heredada del proveedor anterior
+// Version corregida por el equipo PrimeFuel (G3, prefijo gc)
+//   F1 (visible)    temperatura en Celsius (DS18B20)
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <OneWire.h>
@@ -12,8 +13,8 @@ const char* T_DATOS = "upc/gc/pozas/datos";
 const char* T_CMD   = "upc/gc/pozas/cmd";
 
 const int PIN_GAS = 34, PIN_TEMP = 4, PIN_BUZZER = 25, PIN_VENT = 26;
-float umbralGas = 2000;       // ppm
-const float UMBRAL_T = 35;    // grados C
+float umbralGas = 2000;       // ppm (R1)
+const float UMBRAL_T = 35;    // grados C (R1)
 bool ventMax = false;
 
 WiFiClient net;
@@ -86,7 +87,7 @@ void loop() {
 
   float gas = analogRead(PIN_GAS) * 10000.0 / 4095.0;
   sensor.requestTemperatures();
-  float temp = sensor.getTempFByIndex(0);
+  float temp = sensor.getTempCByIndex(0);   // F1: Celsius, no Fahrenheit
 
   // Accion local (edge)
   bool ventilar = false;

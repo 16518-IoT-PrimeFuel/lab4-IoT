@@ -61,7 +61,7 @@
 | Nodo         | Responsable(s)     | Original (docente)                            | Copia corregida |
 | ------------ | ------------------ | --------------------------------------------- | --------------- |
 | N1 Pozas     | 1 y 2              | https://wokwi.com/projects/481589840859419649 | _<pendiente>_   |
-| N2 Secadores | 3                  | https://wokwi.com/projects/481589918908098561 | _<pendiente>_   |
+| N2 Secadores | 3                  | https://wokwi.com/projects/481589918908098561 | https://wokwi.com/projects/481600352780962817  |
 | N3 Perímetro | 4                  | https://wokwi.com/projects/481589993437759489 | _<pendiente>_   |
 | N4 Lavador   | 5 y 6              | https://wokwi.com/projects/481590066854881281 | _<pendiente>_   |
 | N5 Gateway   | 7 (integrador) y 8 | https://wokwi.com/projects/481590141067867137 | _<pendiente>_   |
@@ -118,10 +118,10 @@ Una fila por falla (4 por nodo, 20 en total).
 | F2 - N1 Pozas | Silenciosa | Paso 10: procesamiento por nodo | Con 40 °C y gas bajo el umbral las pozas no ventilan. Sin broker el nodo deja de leer sensores y de accionar el relé (incumple R2). | El `else` de la condición de gas sobrescribe la de temperatura, y `conectar()` bloquea el `loop()` con `while` sin salida. Además publicaba sin validar la hora NTP. | `ventilar = gas>umbral \|\| temp>35 \|\| ventMax`, reconexión sin bloqueo cada 5 s y no se publica sin broker ni hora válida. Commit `10e8807` (rama `bugfix/pozas-accion-local`). | 40 °C con gas bajo el umbral: antes `OFF`, después `ON`. Broker inválido: antes la consola queda congelada (57 s sin lecturas), después lee y ventila cada 2 s y muestra `Sin broker u hora valida: no se publica`. Evidencias: `f2-antes-temp.png`, `f2-despues-temp.png`, `f2-antes-broker.png`, `f2-despues-broker.png`. | Jefferson Castro / Samuel Bonifacio |
 | F3 - N1 Pozas | Seguridad | Paso 4: capa de intercambio | Cualquiera que publique `UMBRAL:9000` en `upc/gc/pozas/cmd` cambia el umbral y apaga la ventilación (R10). | `alRecibir()` acepta `UMBRAL:` y `VENT:` sin firma, antigüedad ni rango. | Formato `<comando>\|<ts>\|<firma>` con HMAC de `pozas\|comando\|ts`, menos de 60 s y umbral entre 500 y 5000; rechazos publicados en `upc/gc/pozas/alerta`. Herramienta `nodos/n1-pozas/firmar_orden.py`. Commit `864a28c` (rama `bugfix/pozas-orden-firmada`). | Antes: `UMBRAL:9000` sin firma se acepta. Después: `UMBRAL:99999` da `Orden rechazada: formato`, una orden firmada vencida da `Orden rechazada: firma invalida o vencida` y `UMBRAL:5000` firmado se acepta. Evidencias: `f3-ataque-antes.png`, `f3-ataque-despues.png`, `f3-vencida-despues.png`, `f3-firmada-despues.png`. | Jefferson Castro / Samuel Bonifacio |
 | F4 - N1 Pozas | Cruzada | Paso 4: capa de intercambio (contrato de interfaz) | HiveMQ recibe datos de pozas, pero el gateway no puede usar el valor (el síntoma aparece en N5). | N1 publica `"valor":"8859.6ppm"` (texto con unidad) y firma esa cadena; el contrato exige `valor` numérico y firma sobre `id\|ts\|valor`. | `"valor":<número>` y firma sobre `pozas\|ts\|<número>`. Commit `3abbf5f` (rama `bugfix/pozas-valor-numerico`). | HiveMQ: antes `"valor":"8859.6ppm"`, después `"valor":8859.6`; la firma publicada `e245434e7f030ec9` coincide con HMAC(`pozas\|1795653319\|8859.6`). Pendiente confirmar en el gateway (N5). Evidencias: `f4-antes.png`, `f4-despues.png`. | Jefferson Castro (síntoma en N5) / Samuel Bonifacio |
-| F1 - N2 Secadores | Visible | | | | | | |
-| F2 - N2 Secadores | Silenciosa | | | | | | |
-| F3 - N2 Secadores | Seguridad | | | | | | |
-| F4 - N2 Secadores | Cruzada | | | | | | |
+| F1 - N2 Secadores | Visible | Paso 10: procesamiento por nodo | Por revisión de código, sin reproducir: el nodo intenta publicar unas 10 veces por segundo; R8 exige cada 2 s. | `PERIODO = 100` ms en `sketch.ino`. | Pendiente (sin commit). Propuesta: `PERIODO = 2000`. | Pendiente: medir el intervalo entre mensajes en la consola y en HiveMQ. Evidencia inicial: `antes-01-circuito.png`. | Katherine Mejia / Jefferson Castro |
+| F2 - N2 Secadores | Silenciosa | Paso 4: capa de intercambio | Por revisión de código, sin reproducir: la consola imprimiría el mensaje, pero HiveMQ no lo recibiría. | El mensaje (unos 245 bytes) más el tópico y la cabecera supera el búfer por defecto de `PubSubClient` (256 bytes): no se llama a `setBufferSize()` ni se comprueba el resultado de `publish()`. | Pendiente (sin commit). Propuesta: `mqtt.setBufferSize(512)`, quitar los campos que no pide el contrato y comprobar `publish()`. | Pendiente: verificar en HiveMQ que llegan los datos. | Katherine Mejia / Jefferson Castro |
+| F3 - N2 Secadores | Seguridad | Paso 4: capa de intercambio | Por revisión de código: los datos salen con `"firma":""` y exponen equipo, zona y responsable en un broker público. | No se calcula el HMAC y el mensaje incluye campos fuera del contrato (R9). | Pendiente (sin commit). Propuesta: firmar `secadores\|ts\|valor` con HMAC-SHA256, publicar solo con hora NTP válida y retirar esos campos. | Pendiente: comparar la firma publicada y probar que el gateway rechaza un dato sin firma. | Katherine Mejia / Jefferson Castro |
+| F4 - N2 Secadores | Cruzada | Paso 4: capa de intercambio (contrato de interfaz) | Por revisión de código, sin reproducir: si N2 y N3 corren a la vez, el broker desconectaría a uno cada vez que el otro se conecta. | N2 y N3 usan el mismo client ID, `gc-sensor`; el contrato exige uno único por nodo. | Pendiente (sin commit). Propuesta: ID propio, por ejemplo `gc-secadores-` más un sufijo único (N3 debe hacer lo mismo). | Pendiente: ejecutar N2 y N3 juntos y verificar que ninguno se reconecta en bucle. | Katherine Mejia / Jefferson Castro |
 | F1 - N3 Perímetro | Visible | Paso 8: sensores y actuadores | El viento se calcula mal: con el potenciómetro en [posición] la consola muestra `viento=[valor antes]` en vez de [valor esperado], y el LED de riesgo no responde bien al rango 90°–180°. | `PIN_VIENTO=25` es un pin ADC2 (no usable con WiFi encendido) y `map(…, 0, 1023, 0, 360)` ignora que el ADC del ESP32 es de 12 bits (0–4095). | Pin 34 (ADC1) y `map(…, 0, 4095, 0, 359)`; cable `viento:SIG` a `esp:34`. Commit `[hash]`. | Con el gas alto y el potenciómetro en 0 %, 25 %, 50 %, 75 % y 100 % la consola muestra [0, ~90, ~180, ~269, 359]; el LED enciende solo con viento entre 90° y 180°. | Alberto Ponce / Katherine Mejia |
 | F2 - N3 Perímetro | Silenciosa | Paso 10: procesamiento por nodo | Si el broker o el WiFi no están disponibles, el nodo se queda atrapado en `conectar()` y deja de leer el gas y de accionar el LED. Si no hay hora NTP, publica con `ts` cercano a 1970 y el gateway lo rechaza sin avisar. | `conectar()` bloquea el `loop()` con un `while` sin salida y no se valida la hora antes de publicar. | Reconexión sin bloqueo cada 5 s, el LED sigue funcionando y no se publica sin hora válida. Commit `[hash]`. | Con un broker inválido temporal: antes el LED nunca responde; después el LED responde y la consola imprime `Sin broker u hora valida: no se publica`. | Alberto Ponce / Katherine Mejia |
 | F3 - N3 Perímetro | Seguridad | Paso 4: capa de intercambio | Cualquiera que publique `OFFSET:-10000` en `upc/gc/perimetro/cmd` cambia la calibración y el gas se lee como 0, así que el nodo queda ciego (R10). | El callback acepta `OFFSET:` sin comprobar firma, antigüedad ni rango. | La orden debe ser `OFFSET:<valor>:<ts>:<firma>`, firmada, de menos de 60 s y con valor absoluto de hasta 500. Commit `[hash]`. | Desde HiveMQ se publica `OFFSET:-10000`: antes la consola muestra `Nueva calibracion: -10000.00`; después muestra `Orden rechazada: formato`. | Alberto Ponce / Katherine Mejia |
@@ -172,6 +172,7 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | `bugfix/n4-lavador-modo-seguro` | [#2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2) | `97e9948` | N4 F2: modo seguro (incluye F1) | schneiderdc | aponceperales | Mergeado, sin revisiones |
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
 | `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
+| `bugfix/n2-secadores` | — | — | N2: archivos base, evidencia inicial y registro de fallas | KathMJ | JeffersonCastroPariona | Sin publicar en GitHub |
 
 ## 8. Evidencias
 
@@ -233,6 +234,26 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 <img src="evidencia/n1-pozas/f4-despues.png" alt="N1 Después: valor numérico" width="800">
 
+### N2 Secadores
+
+#### N2 estado inicial (antes de corregir)
+
+**Código y circuito heredados** (`antes-01-circuito.png`)
+
+<img src="evidencia/n2-secadores/antes-01-circuito.png" alt="N2 Código y circuito heredados" width="800">
+
+**Arranque de la simulación** (`antes-02-arranque.png`)
+
+<img src="evidencia/n2-secadores/antes-02-arranque.png" alt="N2 Arranque de la simulación" width="800">
+
+**Conexiones en diagram.json** (`antes-03-diagrama.png`)
+
+<img src="evidencia/n2-secadores/antes-03-diagrama.png" alt="N2 Conexiones en diagram.json" width="800">
+
+**A los 40 s: sin mensajes en la consola tras el arranque** (`antes-04-sin-salida.png`)
+
+<img src="evidencia/n2-secadores/antes-04-sin-salida.png" alt="N2 A los 40 s: sin mensajes en la consola tras el arranque" width="800">
+
 ### N4 Lavador
 
 #### N4 F1: pin del relé
@@ -281,6 +302,6 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 <img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-conc-alta-despues.png" alt="N4 Después: OFF ignorado con concentración alta" width="800">
 
-### N2 Secadores, N3 Perímetro y N5 Gateway
+### N3 Perímetro y N5 Gateway
 
 _Sin imágenes de evidencia en el repositorio._

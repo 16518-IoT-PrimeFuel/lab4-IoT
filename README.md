@@ -113,10 +113,10 @@ Una fila por falla (4 por nodo, 20 en total).
 
 | N.º y nodo        | Tipo       | Paso del marco (12 pasos) | Síntoma | Causa raíz | Corrección (commit) | Prueba | Responsable / Revisor |
 | ----------------- | ---------- | ------------------------- | ------- | ---------- | ------------------- | ------ | --------------------- |
-| F1 - N1 Pozas     | Visible    |                           |         |            |                     |        |                       |
-| F2 - N1 Pozas     | Silenciosa |                           |         |            |                     |        |                       |
-| F3 - N1 Pozas     | Seguridad  |                           |         |            |                     |        |                       |
-| F4 - N1 Pozas     | Cruzada    |                           |         |            |                     |        |                       |
+| F1 - N1 Pozas | Visible | Paso 8: sensores y actuadores | Con el DS18B20 a 22 °C la consola y HiveMQ muestran `"temp":71.6`. | `sensor.getTempFByIndex(0)` devuelve grados Fahrenheit; R1 define el umbral en 35 °C. | `getTempCByIndex(0)`. Commit `64a9c7f` (rama `bugfix/pozas-temp-celsius`). | Con 22 °C: antes `71.6`, después `22.0` en consola y HiveMQ. Evidencias: `evidencia/n1-pozas/f1-antes.png`, `f1-despues.png`. | Jefferson Castro / Samuel Bonifacio |
+| F2 - N1 Pozas | Silenciosa | Paso 10: procesamiento por nodo | Con 40 °C y gas bajo el umbral las pozas no ventilan. Sin broker el nodo deja de leer sensores y de accionar el relé (incumple R2). | El `else` de la condición de gas sobrescribe la de temperatura, y `conectar()` bloquea el `loop()` con `while` sin salida. Además publicaba sin validar la hora NTP. | `ventilar = gas>umbral \|\| temp>35 \|\| ventMax`, reconexión sin bloqueo cada 5 s y no se publica sin broker ni hora válida. Commit `10e8807` (rama `bugfix/pozas-accion-local`). | 40 °C con gas bajo el umbral: antes `OFF`, después `ON`. Broker inválido: antes la consola queda congelada (57 s sin lecturas), después lee y ventila cada 2 s y muestra `Sin broker u hora valida: no se publica`. Evidencias: `f2-antes-temp.png`, `f2-despues-temp.png`, `f2-antes-broker.png`, `f2-despues-broker.png`. | Jefferson Castro / Samuel Bonifacio |
+| F3 - N1 Pozas | Seguridad | Paso 4: capa de intercambio | Cualquiera que publique `UMBRAL:9000` en `upc/gc/pozas/cmd` cambia el umbral y apaga la ventilación (R10). | `alRecibir()` acepta `UMBRAL:` y `VENT:` sin firma, antigüedad ni rango. | Formato `<comando>\|<ts>\|<firma>` con HMAC de `pozas\|comando\|ts`, menos de 60 s y umbral entre 500 y 5000; rechazos publicados en `upc/gc/pozas/alerta`. Herramienta `nodos/n1-pozas/firmar_orden.py`. Commit `864a28c` (rama `bugfix/pozas-orden-firmada`). | Antes: `UMBRAL:9000` sin firma se acepta. Después: `UMBRAL:99999` da `Orden rechazada: formato`, una orden firmada vencida da `Orden rechazada: firma invalida o vencida` y `UMBRAL:5000` firmado se acepta. Evidencias: `f3-ataque-antes.png`, `f3-ataque-despues.png`, `f3-vencida-despues.png`, `f3-firmada-despues.png`. | Jefferson Castro / Samuel Bonifacio |
+| F4 - N1 Pozas | Cruzada | Paso 4: capa de intercambio (contrato de interfaz) | HiveMQ recibe datos de pozas, pero el gateway no puede usar el valor (el síntoma aparece en N5). | N1 publica `"valor":"8859.6ppm"` (texto con unidad) y firma esa cadena; el contrato exige `valor` numérico y firma sobre `id\|ts\|valor`. | `"valor":<número>` y firma sobre `pozas\|ts\|<número>`. Commit `3abbf5f` (rama `bugfix/pozas-valor-numerico`). | HiveMQ: antes `"valor":"8859.6ppm"`, después `"valor":8859.6`; la firma publicada `e245434e7f030ec9` coincide con HMAC(`pozas\|1795653319\|8859.6`). Pendiente confirmar en el gateway (N5). Evidencias: `f4-antes.png`, `f4-despues.png`. | Jefferson Castro (síntoma en N5) / Samuel Bonifacio |
 | F1 - N2 Secadores | Visible    |                           |         |            |                     |        |                       |
 | F2 - N2 Secadores | Silenciosa |                           |         |            |                     |        |                       |
 | F3 - N2 Secadores | Seguridad  |                           |         |            |                     |        |                       |
@@ -162,7 +162,10 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 | Rama               | PR   | Revisor | Estado |
 | ------------------ | ---- | ------- | ------ |
-| `bugfix/pozas-...` |      |         |        |
+| `bugfix/pozas-temp-celsius` |      | Samuel Bonifacio | Pendiente |
+| `bugfix/pozas-accion-local` |      | Samuel Bonifacio | Pendiente |
+| `bugfix/pozas-orden-firmada` |      | Samuel Bonifacio | Pendiente |
+| `bugfix/pozas-valor-numerico` |      | Samuel Bonifacio | Pendiente |
 | `bugfix/perimetro-viento-adc` |      |         |        |
 | `bugfix/perimetro-reconexion-y-hora` |      |         |        |
 | `bugfix/perimetro-orden-firmada` |      |         |        |

@@ -1,0 +1,28 @@
+22:17:13 === F4 (antes): pozas 1111.1 en /datos y pozas 2222.2 en /dato
+22:17:13 TX upc/gc/pozas/datos {"id":"pozas","ts":1795663033,"valor":1111.1,"unidad":"ppm","calidad":"ok","firma":"cbc28a254d8d7314"}
+22:17:15 RX upc/gc/gateway/conc 2450.5
+22:17:16 RX upc/gc/gateway/conc 2450.5
+22:17:16 TX upc/gc/pozas/dato {"id":"pozas","ts":1795663036,"valor":2222.2,"unidad":"ppm","calidad":"ok","firma":"4d686589add5b864"}
+22:17:19 RX upc/gc/gateway/conc 2222.2
+22:17:22 CAPTURA f4-antes.png
+22:17:22 === F2 (antes): pozas 2450.5 una sola vez y luego 16 s sin datos
+22:17:22 TX upc/gc/pozas/dato {"id":"pozas","ts":1795663042,"valor":2450.5,"unidad":"ppm","calidad":"ok","firma":"bde59a37d6e97fc6"}
+22:17:23 RX upc/gc/gateway/conc 2450.5
+22:17:26 RX upc/gc/gateway/conc 2450.5
+22:17:30 RX upc/gc/gateway/conc 2450.5
+22:17:33 RX upc/gc/gateway/conc 2450.5
+22:17:37 RX upc/gc/gateway/conc 2450.5
+22:17:39 CAPTURA f2-antes.png
+22:17:39 === F1 (antes): pozas 2500, secadores 2600, perimetro 300 con viento 120; sin respuesta de N4 durante 13 s
+22:17:39 TX upc/gc/pozas/dato {"id":"pozas","ts":1795663059,"valor":2500.0,"unidad":"ppm","calidad":"ok","firma":"b0a9ba755932fe45"}
+22:17:39 TX upc/gc/secadores/dato {"id":"secadores","ts":1795663059,"valor":2600.0,"unidad":"ppm","calidad":"ok","firma":"4871ce92a654d883"}
+22:17:39 TX upc/gc/perimetro/dato {"id":"perimetro","ts":1795663059,"valor":300.0,"viento":120,"unidad":"ppm","calidad":"ok","firma":"10ff3d769c927cb8"}
+22:17:40 RX upc/gc/gateway/conc 2600.0
+22:17:40 RX upc/gc/lavador/cmd ON
+22:17:44 RX upc/gc/gateway/conc 2600.0
+22:17:47 RX upc/gc/gateway/conc 2600.0
+22:17:51 RX upc/gc/gateway/conc 2600.0
+22:17:53 CAPTURA f1-antes.png
+22:17:53 TX upc/gc/lavador/cmd (borra el mensaje retenido)
+22:17:54 RX upc/gc/lavador/cmd 
+22:17:54 RX upc/gc/gateway/conc 2600.0

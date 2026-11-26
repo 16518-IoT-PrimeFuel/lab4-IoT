@@ -64,7 +64,7 @@
 | N2 Secadores | 3                  | https://wokwi.com/projects/481589918908098561 | https://wokwi.com/projects/481600352780962817  |
 | N3 Perímetro | 4                  | https://wokwi.com/projects/481589993437759489 | _<pendiente>_   |
 | N4 Lavador   | 5 y 6              | https://wokwi.com/projects/481590066854881281 | https://wokwi.com/projects/481696380330473473   |
-| N5 Gateway   | 7 (integrador) y 8 | https://wokwi.com/projects/481590141067867137 | _<pendiente>_   |
+| N5 Gateway   | 7 (integrador) y 8 | https://wokwi.com/projects/481590141067867137 | https://wokwi.com/projects/481717429309091841   |
 
 ## Contenido
 
@@ -125,15 +125,15 @@ Una fila por falla (4 por nodo, 20 en total).
 | F1 - N3 Perímetro | Visible | Paso 8: sensores y actuadores | El viento se calcula mal: con el potenciómetro en [posición] la consola muestra `viento=[valor antes]` en vez de [valor esperado], y el LED de riesgo no responde bien al rango 90°–180°. | `PIN_VIENTO=25` es un pin ADC2 (no usable con WiFi encendido) y `map(…, 0, 1023, 0, 360)` ignora que el ADC del ESP32 es de 12 bits (0–4095). | Pin 34 (ADC1) y `map(…, 0, 4095, 0, 359)`; cable `viento:SIG` a `esp:34`. Commit `[hash]`. | Con el gas alto y el potenciómetro en 0 %, 25 %, 50 %, 75 % y 100 % la consola muestra [0, ~90, ~180, ~269, 359]; el LED enciende solo con viento entre 90° y 180°. | Alberto Ponce / Katherine Mejia |
 | F2 - N3 Perímetro | Silenciosa | Paso 10: procesamiento por nodo | Si el broker o el WiFi no están disponibles, el nodo se queda atrapado en `conectar()` y deja de leer el gas y de accionar el LED. Si no hay hora NTP, publica con `ts` cercano a 1970 y el gateway lo rechaza sin avisar. | `conectar()` bloquea el `loop()` con un `while` sin salida y no se valida la hora antes de publicar. | Reconexión sin bloqueo cada 5 s, el LED sigue funcionando y no se publica sin hora válida. Commit `[hash]`. | Con un broker inválido temporal: antes el LED nunca responde; después el LED responde y la consola imprime `Sin broker u hora valida: no se publica`. | Alberto Ponce / Katherine Mejia |
 | F3 - N3 Perímetro | Seguridad | Paso 4: capa de intercambio | Cualquiera que publique `OFFSET:-10000` en `upc/gc/perimetro/cmd` cambia la calibración y el gas se lee como 0, así que el nodo queda ciego (R10). | El callback acepta `OFFSET:` sin comprobar firma, antigüedad ni rango. | La orden debe ser `OFFSET:<valor>:<ts>:<firma>`, firmada, de menos de 60 s y con valor absoluto de hasta 500. Commit `[hash]`. | Desde HiveMQ se publica `OFFSET:-10000`: antes la consola muestra `Nueva calibracion: -10000.00`; después muestra `Orden rechazada: formato`. | Alberto Ponce / Katherine Mejia |
-| F4 - N3 Perímetro | Cruzada | Paso 4: capa de intercambio (contrato de tópicos) | Los datos de N3 salen a `upc/gc/perimetro/datos` pero el gateway nunca imprime `OK perimetro`. | El gateway se suscribe a `upc/gc/+/dato` (sin "s"), distinto del contrato `datos`. | En N5: `mqtt.subscribe("upc/gc/+/datos")`. Commit `[hash]` en la rama del gateway. | Antes: HiveMQ muestra los datos y el gateway no responde. Después: el gateway imprime `OK perimetro: [valor] ppm` cada 2 s. | Alberto Ponce (síntoma) / corrige N5 (Joseph) |
+| F4 - N3 Perímetro | Cruzada | Paso 4: capa de intercambio (contrato de tópicos) | Los datos de N3 salen a `upc/gc/perimetro/datos` pero el gateway nunca imprime `OK perimetro`. | El gateway se suscribe a `upc/gc/+/dato` (sin "s"), distinto del contrato `datos`. | En N5: `mqtt.subscribe("upc/gc/+/datos")`. Commit `ce03e07`, rama `bugfix/gateway-suscripcion-datos`. | Antes: HiveMQ muestra los datos y el gateway no responde. Después: el gateway imprime `OK perimetro: [valor] ppm` cada 2 s. | Alberto Ponce (síntoma) / corrige N5 (Joseph) |
 | F1 - N4 Lavador | Visible | Paso 8: sensores y actuadores | El lavador recibe la orden ON mediante MQTT y el motor gira, pero el relé no responde correctamente a las órdenes de control. | En `sketch.ino`, `PIN_RELE=27`, mientras que en `diagram.json` la entrada `rele:IN` está conectada a `esp:26`. | Se modificó `PIN_RELE` de 27 a 26 para establecer la correspondencia entre el código y el circuito. Commit `b230c4d`. [PR #1](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/1). | Se enviaron órdenes ON y OFF desde HiveMQ al tópico `upc/gc/lavador/cmd`. Después de la corrección, el indicador del relé responde a ambas órdenes. Evidencias: `f1-antes.png`, `f1-causa-raiz.png`, `f1-despues-off.png` y `f1-despues.png`. | Schneider Delgado |
 | F2 - N4 Lavador | Silenciosa | Paso 10: procesamiento por nodo | El lavador permanece apagado después de 60 segundos sin recibir mensajes del gateway, incumpliendo la regla R6. | El `loop()` reinicia constantemente `ultimoContacto` mientras MQTT está conectado. Además, `conectar()` contiene bucles de espera indefinida que impiden evaluar el modo seguro durante una desconexión. | Se actualiza `ultimoContacto` al recibir mensajes reconocidos, se eliminan los bucles de espera indefinida y se implementan reintentos de conexión cada 5 s. Commit `70c141b`. [PR #2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2). | Antes: el lavador permanece apagado tras la ausencia de mensajes del gateway. Después: el relé y el motor se activan automáticamente y la consola muestra `[F2] Activando modo seguro tras 60 segundos`. Evidencias: `f2-antes.png`, `f2-inicio-prueba.png` y `f2-despues.png`. Pendiente la prueba de desconexión completa del broker. | Schneider Delgado |
 | F3 - N4 Lavador | Seguridad | Paso 4: capa de intercambio | El lavador acepta ordenes `ON`, `OFF` e `INT:` en texto plano en `upc/gc/lavador/cmd` sin ninguna validacion, y ejecuta un `OFF` aunque la concentracion de gas este sobre el umbral de 2000 ppm (R7, R10). | El `alRecibir()` no verificaba firma ni antiguedad en los comandos recibidos, y `apagar()` no revisaba la variable `concentracion` antes de bajar el rele. | Las ordenes ahora requieren el formato `<comando>|<ts>|<firma>`, validado con HMAC-SHA256 (misma clave del grupo) y antiguedad menor a 60 s; un `OFF` se ignora si `concentracion >= CONC_ALTA`. Tambien se agrego `msg.trim()` para evitar fallos de parseo por espacios o saltos de linea en el payload. Commit `71c3411`. | Desde HiveMQ: un `ON` en texto plano fue aceptado en el codigo original y rechazado con `{"alerta":"orden rechazada: formato"}` en el corregido. Con la concentracion simulada en 2500 ppm, un `OFF` correctamente firmado fue ignorado con `{"alerta":"orden OFF ignorada: concentracion alta"}`. Evidencias: `f3-ataque-antes.png`, `f3-ataque-despues.png`, `f3-conc-alta-despues.png`. | Carlos Lopez / Schneider Delgado |
-| F4 - N4 Lavador | Cruzada | Paso 4: capa de intercambio (contrato de topicos) | En el escenario integrado, con gas alto en 2 o mas nodos y viento entre 90 y 180 grados, el gateway nunca envia `ON` a `upc/gc/lavador/cmd`, por lo que el lazo cerrado del lavador no llega a probarse. | El gateway (N5) se suscribe a `upc/gc/+/dato` en vez de `upc/gc/+/datos`, el mismo desacuerdo de contrato ya identificado en F4 de N3 Perimetro, asi que nunca recibe los niveles de gas de ningun nodo de deteccion. | Corresponde a N5: cambiar a `mqtt.subscribe("upc/gc/+/datos")`. Pendiente de que Joseph aplique y confirme el fix en su rama del gateway. | Pendiente, bloqueada hasta integrar el fix de N5. Una vez aplicado, se forzara el escenario de gas alto y viento 90-180 grados y se medira el tiempo de deteccion a confirmacion para la seccion 5. | Carlos Lopez (sintoma) / corrige N5 (Joseph) |
-| F1 - N5 Gateway | Visible | | | | | | |
-| F2 - N5 Gateway | Silenciosa | | | | | | |
-| F3 - N5 Gateway | Seguridad | | | | | | |
-| F4 - N5 Gateway | Cruzada | | | | | | |
+| F4 - N4 Lavador | Cruzada | Paso 4: capa de intercambio (contrato de topicos) | En el escenario integrado, con gas alto en 2 o mas nodos y viento entre 90 y 180 grados, el gateway nunca envia `ON` a `upc/gc/lavador/cmd`, por lo que el lazo cerrado del lavador no llega a probarse. | El gateway (N5) se suscribe a `upc/gc/+/dato` en vez de `upc/gc/+/datos`, el mismo desacuerdo de contrato ya identificado en F4 de N3 Perimetro, asi que nunca recibe los niveles de gas de ningun nodo de deteccion. | Corresponde a N5: cambiar a `mqtt.subscribe("upc/gc/+/datos")`. Aplicado en N5: commit `ce03e07`, rama `bugfix/gateway-suscripcion-datos`. | Pendiente, bloqueada hasta integrar el fix de N5. Una vez aplicado, se forzara el escenario de gas alto y viento 90-180 grados y se medira el tiempo de deteccion a confirmacion para la seccion 5. | Carlos Lopez (sintoma) / corrige N5 (Joseph) |
+| F1 - N5 Gateway | Visible | Paso 10: procesamiento por nodo | Con pozas 2500, secadores 2600 y perímetro 300 con viento 120°, el original publica `ON` sin firma, imprime `Orden: lavador ON` y pone el semáforo en rojo sin ninguna confirmación de N4; en 13 s sin respuesta no emite la alerta "falla del lavador" (R5). | `lavadorOn` se asignaba al publicar la orden, no al recibir `{"lavador":"CONFIRMADO"}` en `upc/gc/lavador/estado`; no existía el temporizador de 10 s, y `VENT:MAX` salía sin firma, por lo que N1 la rechaza con `Orden rechazada: formato` (revisión de código). | Temporizador R5 de 10 s con alerta y `VENT:MAX` firmado con el formato de N1 (commit `ab51208`); `lavadorOn` solo cambia con `CONFIRMADO` u `OFF` publicados por N4 (commit `66de3e5`), rama `bugfix/gateway-lavador-estado`. Las órdenes `ON`/`OFF` al lavador se firman con el formato de F3 de N4 (commit `2e5c4f8`, rama `bugfix/gateway-ordenes-lavador-firmadas`); requiere integrar `bugfix/n4-lavador-ordenes-firmadas`. | Mismos datos publicados con paho-mqtt. Antes (original): `ON` plano y ninguna alerta. Después (copia): orden firmada `ON\|<ts>\|<firma>`, `Orden: lavador ON (esperando confirmacion)` y, a los 10 s de simulación, `ALERTA: falla del lavador (sin confirmacion en 10 s)` con `VENT:MAX\|<ts>\|<firma>` hacia pozas; al repetir y simular a N4 con `{"lavador":"CONFIRMADO"}`, `Lavador CONFIRMADO: ON`. Las firmas publicadas se verificaron con el esquema de N4 y de N1. Evidencias: `f1-antes.png`, `f1-despues.png`, `mqtt-antes.log`, `mqtt-despues.log`. Pendiente: prueba integrada con N4 real. | Joseph Rodriguez / Samuel Bonifacio |
+| F2 - N5 Gateway | Silenciosa | Paso 10: procesamiento por nodo | Tras un único dato de pozas (2450.5) y sin mensajes nuevos, el original sigue publicando `upc/gc/gateway/conc` = 2450.5 indefinidamente, así que la regla R4 decide con datos viejos. | `gasPozas`, `gasSecadores`, `gasPerimetro` y `viento` no guardaban el momento de recepción, así que nunca caducaban. | Cada lectura guarda `millis()` al recibirse y caduca a los 10 s (umbral decidido por el grupo, no por la especificación); solo cuentan los datos vigentes y el `OFF` exige los tres vigentes. Commit `1130d85`, rama `bugfix/gateway-caducidad-datos`. | Un dato de pozas y luego silencio, observando `upc/gc/gateway/conc`. Antes (original): 2450.5 durante todo el periodo sin datos. Después (copia): 2450.5 durante ~18 s reales y luego 0.0 (22:22:31 → 22:22:52); equivale a ~10 s de simulación, que corre al ~56 %. Evidencias: `mqtt-antes.log`, `mqtt-despues.log`. | Joseph Rodriguez / Samuel Bonifacio |
+| F3 - N5 Gateway | Seguridad | Paso 4: capa de intercambio | Un dato `pozas` con firma HMAC válida y `ts` una hora en el futuro (`ts` 1795665909, hora real 1795662309) se acepta: el monitor muestra `OK pozas: 2450.5 ppm` (R9). | `alRecibir()` solo comprobaba `ahora - ts > 60` y no el futuro; además `setup()` no llamaba a `configTime()`, así que sin NTP `time(nullptr)` es cercano a 0 y cualquier `ts` pasaba. | `configTime()` con espera acotada de 15 s y rechazo si la hora no está sincronizada o si `abs(ahora - ts) > 60` (misma regla que N1). La ventana es simétrica porque Wokwi corre a ~55 % de velocidad y el reloj del ESP32 se atrasa (36 s medidos tras ~80 s de simulación). Commit `ae554b3`, rama `bugfix/gateway-validacion-ts`. | Mensajes publicados en `broker.hivemq.com:1883` con paho-mqtt. Antes (original, topic `upc/gc/pozas/dato`): `OK pozas: 2450.5 ppm` con `ts` futuro. Después (copia corregida): dato vigente `OK pozas: 2450.5 ppm` y dato con `ts` futuro `RECHAZADO: timestamp invalido pozas`. Evidencias: `evidencia/n5-gateway/f3-antes.png`, `f3-despues.png`. | Joseph Rodriguez / Samuel Bonifacio |
+| F4 - N5 Gateway | Cruzada | Paso 4: capa de intercambio (contrato de tópicos) | Los nodos publican en `upc/gc/<nodo>/datos` y el gateway nunca los procesa (síntoma registrado en F4 de N3 y N4). | `conectar()` se suscribía a `upc/gc/+/dato` (sin "s"), distinto del contrato. | `mqtt.subscribe("upc/gc/+/datos")`. Commit `ce03e07`, rama `bugfix/gateway-suscripcion-datos`. | Se publica pozas 1111.1 en un tópico y 2222.2 en el otro. Antes (original): 1111.1 en `/datos` se ignora y solo aparece `OK pozas: 2222.2 ppm` (de `/dato`). Después (copia): 1111.1 en `/dato` se ignora y aparece `OK pozas: 2222.2 ppm` (de `/datos`). Evidencias: `f4-antes.png`, `f1-despues.png`, `mqtt-antes.log`, `mqtt-despues.log`. Pendiente: prueba integrada con N3 y N4 reales. | Joseph Rodriguez / Samuel Bonifacio |
 
 ## 5. Medición antes y después del lazo cerrado
 
@@ -141,8 +141,8 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 | Momento                     | Detección (ts) | Confirmación (ts) | Tiempo (s) | Cumple R5 |
 | --------------------------- | -------------- | ----------------- | ---------- | --------- |
-| Antes de las correcciones   |                |                   |            |           |
-| Después de las correcciones |                |                   |            |           |
+| Antes de las correcciones   | Datos de pozas, secadores y perímetro publicados en `upc/gc/<nodo>/datos` | Ninguna: el gateway original escucha `/dato` (F4), nunca recibe los datos ni envía `ON` (ver `f4-antes.png` y `mqtt-antes.log`) | — | No |
+| Después de las correcciones | Pendiente: prueba integrada con N4 real | Pendiente | Pendiente | Pendiente |
 
 ## 6. Pruebas de integración, regresión y ataque
 
@@ -173,6 +173,12 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
 | `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
 | `bugfix/n2-secadores` | [#11](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/11) | `4071165`, `5a157d1`, `589a845` | N2: archivos base, evidencia inicial y registro de fallas | KathMJ (commits), samuelbonifacio015 (PR) | JeffersonCastroPariona | Mergeado, sin revisiones |
+| `bugfix/gateway-validacion-ts` | [#12](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/12) | `1fa0113`, `ae554b3`, `66391ff` | N5: archivos base y F3 (timestamp y hora NTP), con evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-caducidad-datos` | [#13](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/13) | `1130d85` | N5 F2: caducidad de datos por nodo (incluye F3) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-lavador-estado` | [#14](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/14) | `ab51208`, `66de3e5` | N5 F1: estado confirmado del lavador y temporizador R5 (incluye F3 y F2) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-suscripcion-datos` | [#15](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/15) | `ce03e07` | N5 F4: suscripción a `upc/gc/+/datos` (incluye F3, F2 y F1) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-ordenes-lavador-firmadas` | [#16](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/16) | `2e5c4f8` | N5: firma las órdenes `ON`/`OFF` enviadas al lavador con el formato de F3 de N4 (incluye F3, F2, F1 y F4) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `docs/n5-gateway-bitacora` | [#17](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/17) | `99b1a35`, `7512ebb`, `10b604c` | Bitácora F1 a F4 de N5, copia corregida y evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
 
 ## 8. Evidencias
 
@@ -302,6 +308,38 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 <img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-conc-alta-despues.png" alt="N4 Después: OFF ignorado con concentración alta" width="800">
 
-### N3 Perímetro y N5 Gateway
+### N5 Gateway
+
+#### N5 F3: timestamp y hora NTP (rama `bugfix/gateway-validacion-ts`, sin integrar)
+
+**Antes: el original acepta un dato con `ts` una hora en el futuro** (`f3-antes.png`)
+
+<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/66391ff320dc92777336d7e57b9eaef4582e4f2f/evidencia/n5-gateway/f3-antes.png" alt="N5 Antes: el original acepta un dato con ts una hora en el futuro" width="800">
+
+**Después: acepta el dato vigente y rechaza el `ts` futuro** (`f3-despues.png`)
+
+<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/66391ff320dc92777336d7e57b9eaef4582e4f2f/evidencia/n5-gateway/f3-despues.png" alt="N5 Después: acepta el dato vigente y rechaza el ts futuro" width="800">
+
+#### N5 F1: estado confirmado del lavador y R5
+
+**Antes: el original ordena `ON` y marca el lavador como encendido sin confirmación** (`f1-antes.png`)
+
+<img src="evidencia/n5-gateway/f1-antes.png" alt="N5 Antes: orden ON sin confirmación y semáforo en rojo" width="800">
+
+**Después: orden firmada, alerta de R5 a los 10 s y confirmación de N4** (`f1-despues.png`; también muestra F4)
+
+<img src="evidencia/n5-gateway/f1-despues.png" alt="N5 Después: orden firmada, alerta R5 y confirmación" width="800">
+
+#### N5 F4: suscripción a `datos`
+
+**Antes: el original ignora `upc/gc/pozas/datos` y solo procesa `/dato`** (`f4-antes.png`)
+
+<img src="evidencia/n5-gateway/f4-antes.png" alt="N5 Antes: el original ignora datos" width="800">
+
+#### N5 F2: caducidad de datos
+
+Sin captura: la prueba se registra en el tráfico MQTT de `upc/gc/gateway/conc`, en [`mqtt-antes.log`](evidencia/n5-gateway/mqtt-antes.log) y [`mqtt-despues.log`](evidencia/n5-gateway/mqtt-despues.log).
+
+### N3 Perímetro
 
 _Sin imágenes de evidencia en el repositorio._

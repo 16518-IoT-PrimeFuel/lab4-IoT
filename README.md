@@ -173,12 +173,12 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
 | `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
 | `bugfix/n2-secadores` | [#11](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/11) | `4071165`, `5a157d1`, `589a845` | N2: archivos base, evidencia inicial y registro de fallas | KathMJ (commits), samuelbonifacio015 (PR) | JeffersonCastroPariona | Mergeado, sin revisiones |
-| `bugfix/gateway-validacion-ts` | — | `1fa0113`, `ae554b3`, `66391ff` | N5: archivos base y F3 (timestamp y hora NTP), con evidencias | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
-| `bugfix/gateway-caducidad-datos` | — | `1130d85` | N5 F2: caducidad de datos por nodo (incluye F3) | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
-| `bugfix/gateway-lavador-estado` | — | `ab51208`, `66de3e5` | N5 F1: estado confirmado del lavador y temporizador R5 (incluye F3 y F2) | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
-| `bugfix/gateway-suscripcion-datos` | — | `ce03e07` | N5 F4: suscripción a `upc/gc/+/datos` (incluye F3, F2 y F1) | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
-| `bugfix/gateway-ordenes-lavador-firmadas` | — | `2e5c4f8` | N5: firma las órdenes `ON`/`OFF` enviadas al lavador con el formato de F3 de N4 (incluye F3, F2, F1 y F4) | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
-| `docs/n5-gateway-bitacora` | — | — | Bitácora F1 a F4 de N5, copia corregida y evidencias | eJosR-Coding | Danny Guerrero (integrante 8) | Publicada, sin PR |
+| `bugfix/gateway-validacion-ts` | [#12](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/12) | `1fa0113`, `ae554b3`, `66391ff` | N5: archivos base y F3 (timestamp y hora NTP), con evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-caducidad-datos` | [#13](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/13) | `1130d85` | N5 F2: caducidad de datos por nodo (incluye F3) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-lavador-estado` | [#14](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/14) | `ab51208`, `66de3e5` | N5 F1: estado confirmado del lavador y temporizador R5 (incluye F3 y F2) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-suscripcion-datos` | [#15](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/15) | `ce03e07` | N5 F4: suscripción a `upc/gc/+/datos` (incluye F3, F2 y F1) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `bugfix/gateway-ordenes-lavador-firmadas` | [#16](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/16) | `2e5c4f8` | N5: firma las órdenes `ON`/`OFF` enviadas al lavador con el formato de F3 de N4 (incluye F3, F2, F1 y F4) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `docs/n5-gateway-bitacora` | [#17](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/17) | `99b1a35`, `7512ebb`, `10b604c` | Bitácora F1 a F4 de N5, copia corregida y evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
 
 ## 8. Evidencias
 

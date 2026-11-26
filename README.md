@@ -47,6 +47,7 @@
 | Versión | Fecha    | Autores   | Descripción de modificación                                  |
 | ------- | -------- | --------- | ------------------------------------------------------------ |
 | v0.1    | 24/11/26 | PrimeFuel | Estructura inicial del README, roles y enlaces a las copias de Wokwi. |
+| v0.2    | 26/11/26 | PrimeFuel | Especificación de referencia (nodos, reglas R1–R10, contrato), bitácora F1–F4 de N1, N4 y N5, registro de N2 y N3, resumen de los PR #1 a #17 (todos mergeados), estado por nodo y pendientes. |
 
 ## Enlaces del proyecto
 
@@ -75,13 +76,61 @@
 - [5. Medición antes y después del lazo cerrado](#5-medición-antes-y-después-del-lazo-cerrado)
 - [6. Pruebas de integración, regresión y ataque](#6-pruebas-de-integración-regresión-y-ataque)
 - [7. Ramas y pull requests](#7-ramas-y-pull-requests)
-- [8. Evidencia del tablero](#8-evidencia-del-tablero)
-- [9. Exposición](#9-exposición)
-- [10. Anexo: evidencias](#10-anexo-evidencias)
+- [8. Evidencias](#8-evidencias)
+- [9. Entregables, sesiones y exposición](#9-entregables-sesiones-y-exposición)
+- [10. Estado actual y pendientes](#10-estado-actual-y-pendientes)
 
 ## 1. Contexto y encargo
 
 Pesquera Costa Norte S.A.C. (empresa ficticia) procesa hasta 1 200 t diarias de anchoveta en Chimbote, a 800 m de una zona residencial. Un proveedor instaló un sistema IoT de 5 nodos (3 de detección, 1 de tratamiento de gases y 1 gateway) y se retiró. Como equipo de mantenimiento, debemos **auditar la instalación, encontrar cada falla, explicar su causa raíz, corregirla y demostrar que el sistema integrado vuelve a funcionar**. Cada nodo contiene 4 fallas (visible, silenciosa, de seguridad y cruzada); una falla no está resuelta hasta que se demuestra con una prueba.
+
+### Tipos de falla
+
+| Tipo | Cómo se manifiesta |
+| --- | --- |
+| Visible | Aparece apenas se ejecuta la simulación |
+| Silenciosa | Solo aparece en un escenario concreto (valor alto, desconexión, paso del tiempo) |
+| De seguridad | Solo aparece cuando alguien ataca el nodo desde el broker |
+| Cruzada | El síntoma aparece en un nodo, pero la causa está en otro |
+
+### Nodos de la instalación
+
+| Nodo | Parte del problema | Detecta | Actúa |
+| --- | --- | --- | --- |
+| N1 Pozas | Emisión en su origen | Gas (MQ-2) y temperatura en °C (DS18B20) | Buzzer local y relé de ventilación |
+| N2 Secadores | Emisión del secado | Gas (MQ-2), temperatura y humedad (DHT22) | Baliza LED RGB: verde, amarilla o roja |
+| N3 Perímetro | Llegada de la emisión a la comunidad | Gas (MQ-2) y dirección del viento 0–359° (potenciómetro) | LED de riesgo hacia la comunidad |
+| N4 Lavador | Tratamiento de gases | Confirmación de funcionamiento (interruptor) | Relé del lavador y motor paso a paso (intensidad) |
+| N5 Gateway | Decisión combinada y operación sin internet | Pulsador de reconocimiento de alertas | Semáforo NeoPixel y órdenes al lavador |
+
+### Reglas de la especificación
+
+| N.º | Regla |
+| --- | --- |
+| R1 | Umbral de gas: 2000 ppm. Umbral de temperatura en pozas: 35 °C |
+| R2 | Acción local (edge): las pozas ventilan si el gas **o** la temperatura superan su umbral, sin esperar al gateway |
+| R3 | El viento va hacia la comunidad cuando su dirección está entre 90 y 180 grados |
+| R4 | Coordinación (fog): el gateway enciende el lavador si al menos 2 nodos superan el umbral y el viento va hacia la comunidad. Lo apaga cuando la concentración baja del 80 % del umbral |
+| R5 | Lazo cerrado: el lavador debe confirmar funcionamiento en máximo 10 s. Si no, alerta «falla del lavador» y el gateway lleva al máximo la ventilación de las pozas |
+| R6 | Modo seguro: si el lavador no recibe mensajes del gateway durante 60 s, se enciende por precaución |
+| R7 | El lavador no se apaga mientras la concentración sea alta |
+| R8 | Los nodos publican cada 2 s. El gateway escribe en ThingSpeak cada 15 s o más |
+| R9 | Todo dato lleva firma HMAC y marca de tiempo real (NTP). El gateway rechaza mensajes sin firma válida o con más de 60 s de antigüedad |
+| R10 | Ningún nodo acepta cambios de configuración u órdenes que no provengan del gateway |
+
+### Contrato de interfaz (prefijo del grupo: `gc`)
+
+| Elemento | Acuerdo |
+| --- | --- |
+| Broker | `broker.hivemq.com`, puerto 1883 (nodos) y WebSocket 8884 (página y cliente web) |
+| Datos | `upc/gc/<nodo>/datos` (nodo: `pozas`, `secadores`, `perimetro`) |
+| Órdenes | `upc/gc/<nodo>/cmd` |
+| Estado y alertas | `upc/gc/<nodo>/estado` y `upc/gc/<nodo>/alerta` |
+| Concentración máxima | `upc/gc/gateway/conc`, publicada por el gateway |
+| Formato del dato | `{"id":"pozas","ts":1795536432,"valor":2450.5,"unidad":"ppm","calidad":"ok","firma":"..."}` |
+| Campo valor | Siempre **numérico**, sin unidades ni comillas |
+| Firma | HMAC-SHA256 de `id\|ts\|valor` con la clave del grupo; se envían los primeros 16 caracteres hexadecimales |
+| Client ID | Único por nodo y por grupo |
 
 ## 2. Roles y organización
 
@@ -162,23 +211,23 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 | Rama | PR | Commits | Falla / contenido | Autor (GitHub) | Revisor (rotación) | Estado |
 | ---- | -- | ------- | ----------------- | -------------- | ------------------ | ------ |
-| `bugfix/n1-pozas` | [#10](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/10) | `47a0d05` | N1: anexo de evidencias en el README | samuelbonifacio015 | — | Mergeado, sin revisiones |
-| `bugfix/pozas-temp-celsius` | [#9](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/9) | `64a9c7f`, `b2db61f` | N1 F1: temperatura en grados Celsius, con evidencias | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `bugfix/pozas-accion-local` | [#7](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/7) | `10e8807`, `a3c1231` | N1 F2: ventilación por gas o temperatura sin depender del broker, con evidencias (incluye F1) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `bugfix/pozas-orden-firmada` | [#4](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/4) | `864a28c`, `8167c24` | N1 F3: valida firma HMAC y antigüedad de las órdenes, con evidencias (incluye F1 y F2) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `bugfix/pozas-valor-numerico` | [#5](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/5) | `3abbf5f`, `2f909d4` | N1 F4: publica el valor numérico según el contrato, con evidencias (incluye F1 a F3) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `docs/n1-pozas-bitacora` | [#8](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/8) | `4faf55e`, `8275fe6` | Bitácora F1 a F4 de N1 | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `bugfix/n4-lavador-pin-rele` | [#1](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/1) | `bf07c5c`, `b230c4d` | N4: archivos base y F1 (pin del relé) | schneiderdc | aponceperales | Mergeado, sin revisiones |
-| `bugfix/n4-lavador-modo-seguro` | [#2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2) | `97e9948` | N4 F2: modo seguro (incluye F1) | schneiderdc | aponceperales | Mergeado, sin revisiones |
+| `bugfix/n1-pozas` | [#10](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/10) | `47a0d05` | N1: anexo de evidencias en el README | samuelbonifacio015 | — | Mergeado 25/11, sin revisiones |
+| `bugfix/pozas-temp-celsius` | [#9](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/9) | `64a9c7f`, `b2db61f` | N1 F1: temperatura en grados Celsius, con evidencias | JeffersonCastroPariona | samuelbonifacio015 | Mergeado 25/11, sin revisiones |
+| `bugfix/pozas-accion-local` | [#7](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/7) | `10e8807`, `a3c1231` | N1 F2: ventilación por gas o temperatura sin depender del broker, con evidencias (incluye F1) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado 25/11, sin revisiones |
+| `bugfix/pozas-orden-firmada` | [#4](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/4) | `864a28c`, `8167c24` | N1 F3: valida firma HMAC y antigüedad de las órdenes, con evidencias (incluye F1 y F2) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado 25/11, sin revisiones |
+| `bugfix/pozas-valor-numerico` | [#5](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/5) | `3abbf5f`, `2f909d4` | N1 F4: publica el valor numérico según el contrato, con evidencias (incluye F1 a F3) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado 25/11, sin revisiones |
+| `docs/n1-pozas-bitacora` | [#8](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/8) | `4faf55e`, `8275fe6` | Bitácora F1 a F4 de N1 | JeffersonCastroPariona | samuelbonifacio015 | Mergeado 25/11, sin revisiones |
+| `bugfix/n4-lavador-pin-rele` | [#1](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/1) | `bf07c5c`, `b230c4d` | N4: archivos base y F1 (pin del relé) | schneiderdc | aponceperales | Mergeado 25/11, sin revisiones |
+| `bugfix/n4-lavador-modo-seguro` | [#2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2) | `97e9948` | N4 F2: modo seguro (incluye F1) | schneiderdc | aponceperales | Mergeado 25/11, sin revisiones |
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
-| `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
-| `bugfix/n2-secadores` | [#11](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/11) | `4071165`, `5a157d1`, `589a845` | N2: archivos base, evidencia inicial y registro de fallas | KathMJ (commits), samuelbonifacio015 (PR) | JeffersonCastroPariona | Mergeado, sin revisiones |
-| `bugfix/gateway-validacion-ts` | [#12](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/12) | `1fa0113`, `ae554b3`, `66391ff` | N5: archivos base y F3 (timestamp y hora NTP), con evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
-| `bugfix/gateway-caducidad-datos` | [#13](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/13) | `1130d85` | N5 F2: caducidad de datos por nodo (incluye F3) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
-| `bugfix/gateway-lavador-estado` | [#14](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/14) | `ab51208`, `66de3e5` | N5 F1: estado confirmado del lavador y temporizador R5 (incluye F3 y F2) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
-| `bugfix/gateway-suscripcion-datos` | [#15](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/15) | `ce03e07` | N5 F4: suscripción a `upc/gc/+/datos` (incluye F3, F2 y F1) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
-| `bugfix/gateway-ordenes-lavador-firmadas` | [#16](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/16) | `2e5c4f8` | N5: firma las órdenes `ON`/`OFF` enviadas al lavador con el formato de F3 de N4 (incluye F3, F2, F1 y F4) | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
-| `docs/n5-gateway-bitacora` | [#17](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/17) | `99b1a35`, `7512ebb`, `10b604c` | Bitácora F1 a F4 de N5, copia corregida y evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Abierto, pendiente de aprobación |
+| `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado 25/11, sin revisiones |
+| `bugfix/n2-secadores` | [#11](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/11) | `4071165`, `5a157d1`, `589a845` | N2: archivos base, evidencia inicial y registro de fallas | KathMJ (commits), samuelbonifacio015 (PR) | JeffersonCastroPariona | Mergeado 25/11, sin revisiones |
+| `bugfix/gateway-validacion-ts` | [#12](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/12) | `1fa0113`, `ae554b3`, `66391ff` | N5: archivos base y F3 (timestamp y hora NTP), con evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
+| `bugfix/gateway-caducidad-datos` | [#13](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/13) | `1130d85` | N5 F2: caducidad de datos por nodo (incluye F3) | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
+| `bugfix/gateway-lavador-estado` | [#14](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/14) | `ab51208`, `66de3e5` | N5 F1: estado confirmado del lavador y temporizador R5 (incluye F3 y F2) | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
+| `bugfix/gateway-suscripcion-datos` | [#15](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/15) | `ce03e07` | N5 F4: suscripción a `upc/gc/+/datos` (incluye F3, F2 y F1) | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
+| `bugfix/gateway-ordenes-lavador-firmadas` | [#16](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/16) | `2e5c4f8` | N5: firma las órdenes `ON`/`OFF` enviadas al lavador con el formato de F3 de N4 (incluye F3, F2, F1 y F4) | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
+| `docs/n5-gateway-bitacora` | [#17](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/17) | `99b1a35`, `7512ebb`, `10b604c` | Bitácora F1 a F4 de N5, copia corregida y evidencias | eJosR-Coding | samuelbonifacio015 (líder) | Mergeado 25/11, sin revisiones |
 
 ## 8. Evidencias
 
@@ -298,27 +347,27 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 **Antes: ataque** (`f3-ataque-antes.png`)
 
-<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-ataque-antes.png" alt="N4 Antes: ataque" width="800">
+<img src="evidencia/n4-lavador/f3-ataque-antes.png" alt="N4 Antes: ataque" width="800">
 
 **Después: ataque rechazado** (`f3-ataque-despues.png`)
 
-<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-ataque-despues.png" alt="N4 Después: ataque rechazado" width="800">
+<img src="evidencia/n4-lavador/f3-ataque-despues.png" alt="N4 Después: ataque rechazado" width="800">
 
 **Después: OFF ignorado con concentración alta** (`f3-conc-alta-despues.png`)
 
-<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-conc-alta-despues.png" alt="N4 Después: OFF ignorado con concentración alta" width="800">
+<img src="evidencia/n4-lavador/f3-conc-alta-despues.png" alt="N4 Después: OFF ignorado con concentración alta" width="800">
 
 ### N5 Gateway
 
-#### N5 F3: timestamp y hora NTP (rama `bugfix/gateway-validacion-ts`, sin integrar)
+#### N5 F3: timestamp y hora NTP
 
 **Antes: el original acepta un dato con `ts` una hora en el futuro** (`f3-antes.png`)
 
-<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/66391ff320dc92777336d7e57b9eaef4582e4f2f/evidencia/n5-gateway/f3-antes.png" alt="N5 Antes: el original acepta un dato con ts una hora en el futuro" width="800">
+<img src="evidencia/n5-gateway/f3-antes.png" alt="N5 Antes: el original acepta un dato con ts una hora en el futuro" width="800">
 
 **Después: acepta el dato vigente y rechaza el `ts` futuro** (`f3-despues.png`)
 
-<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/66391ff320dc92777336d7e57b9eaef4582e4f2f/evidencia/n5-gateway/f3-despues.png" alt="N5 Después: acepta el dato vigente y rechaza el ts futuro" width="800">
+<img src="evidencia/n5-gateway/f3-despues.png" alt="N5 Después: acepta el dato vigente y rechaza el ts futuro" width="800">
 
 #### N5 F1: estado confirmado del lavador y R5
 
@@ -343,3 +392,61 @@ Sin captura: la prueba se registra en el tráfico MQTT de `upc/gc/gateway/conc`,
 ### N3 Perímetro
 
 _Sin imágenes de evidencia en el repositorio._
+
+## 9. Entregables, sesiones y exposición
+
+### Entregables (repositorio de GitHub del grupo)
+
+| Entregable | Estado |
+| --- | --- |
+| README.md con integrantes, roles y enlaces a las copias corregidas de Wokwi | Hecho; falta la copia de N3 |
+| Bitácora de fallas completa (sección 4) | N1, N4 y N5 completos; N2 y N3 sin corrección |
+| Una rama `bugfix/` y un PR aprobado por cada falla corregida | PR #1 a #17 mergeados, ninguno con revisión aprobada en GitHub; N4 F3 sin PR |
+| Captura del tablero de incidencias al cierre de cada sesión | Pendiente (sin URL del tablero) |
+| Medición antes y después del lazo cerrado del lavador | Solo «antes»; falta «después» |
+
+### Sesiones
+
+| Sesión 1 (180 min) | Sesión 2 (120 min) |
+| --- | --- |
+| 0 a 20: explicación del caso | 0 a 30: fallas silenciosas, con escenarios de prueba |
+| 20 a 40: reconocimiento (ejecutar la instalación y compararla con la especificación) | 30 a 50: ataques desde el broker y defensas |
+| 40 a 130: diagnóstico y corrección por nodo (reuniones de pie en los minutos 60 y 120) | 50 a 70: prueba de regresión e integración |
+| 130 a 165: integración con el gateway y fallas cruzadas | 70 a 80: ensayo de la exposición |
+| 165 a 180: revisión del avance | 80 a 120: exposiciones y retroalimentación |
+
+### Exposición (10 minutos, en vivo sobre la instalación reparada)
+
+| Bloque | Quién | Contenido | Tiempo |
+| --- | --- | --- | --- |
+| Apertura | Integrador | Estado inicial de la instalación y resumen de fallas encontradas | 1,5 min |
+| Fallas | Cada integrante | La falla más difícil de su nodo: síntoma, causa raíz y prueba | 25 s por persona |
+| Demostración | Integrador | Escenario integrado: pico de emisión con viento hacia la comunidad, lavador confirmado y un ataque rechazado | 2,5 min |
+| Preguntas | Docente | A cualquier integrante | 2 min |
+
+Sin intervención en la exposición, no hay nota.
+
+## 10. Estado actual y pendientes
+
+### Estado por nodo
+
+| Nodo | F1 | F2 | F3 | F4 | En `main` |
+| --- | --- | --- | --- | --- | --- |
+| N1 Pozas | Corregida | Corregida | Corregida | Corregida (falta confirmar en N5) | Sí |
+| N2 Secadores | Registrada | Registrada | Registrada | Registrada | Solo archivos base y registro; sin correcciones |
+| N3 Perímetro | Registrada | Registrada | Registrada | Corregida en N5 (`ce03e07`) | Solo archivos base; sin correcciones |
+| N4 Lavador | Corregida | Corregida (falta prueba con broker caído) | Corregida en rama sin PR | Corregida en N5; falta prueba integrada | F1 y F2; F3 en `bugfix/n4-lavador-ordenes-firmadas` |
+| N5 Gateway | Corregida | Corregida | Corregida | Corregida | Sí; falta prueba integrada |
+
+### Pendientes
+
+1. Crear el tablero de incidencias (Trello/Jira) y pegar la URL en «Enlaces del proyecto»; tomar las capturas al cierre de cada sesión.
+2. N2 Secadores: aplicar y probar F1 a F4 (`PERIODO = 2000`, `setBufferSize`, firma HMAC, client ID propio) y subir la copia de Wokwi.
+3. N3 Perímetro: aplicar y probar F1 a F3, completar los `[hash]` y valores de la bitácora, subir evidencias y la copia de Wokwi.
+4. N4 F3: abrir el PR de `bugfix/n4-lavador-ordenes-firmadas` (en conflicto con `main`) y resolverlo.
+5. N4 F2: probar la desconexión completa del broker.
+6. Revisiones: ningún PR tiene revisión aprobada en GitHub; los PR de N5 los aprobó el líder en lugar de la rotación (el 8 revisa al 7).
+7. Sección 5: medir detección → confirmación del lavador después de las correcciones (R5 ≤ 10 s).
+8. Sección 6: ejecutar y documentar las pruebas de integración, apagado, falla del lavador, modo seguro, ataques a datos y a órdenes de N2, N3, N4 y N5, y la regresión final.
+9. Confirmar F4 de N1 (valor numérico) y F4 de N3 y N4 (suscripción) con la prueba integrada.
+10. Preparar la exposición (guion por integrante y demostración del escenario integrado).

@@ -50,7 +50,7 @@
 
 ## Enlaces del proyecto
 
-**Repositorio del laboratorio:** _<pegar URL del repo de GitHub del grupo>_
+**Repositorio del laboratorio:** https://github.com/16518-IoT-PrimeFuel/lab4-IoT
 
 **Tablero de incidencias (Trello/Jira):** _<pegar URL>_
 
@@ -77,6 +77,7 @@
 - [7. Ramas y pull requests](#7-ramas-y-pull-requests)
 - [8. Evidencia del tablero](#8-evidencia-del-tablero)
 - [9. Exposición](#9-exposición)
+- [10. Anexo: evidencias](#10-anexo-evidencias)
 
 ## 1. Contexto y encargo
 
@@ -113,10 +114,10 @@ Una fila por falla (4 por nodo, 20 en total).
 
 | N.º y nodo | Tipo | Paso del marco (12 pasos) | Síntoma | Causa raíz | Corrección (commit) | Prueba | Responsable / Revisor |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1 - N1 Pozas | Visible | | | | | | |
-| F2 - N1 Pozas | Silenciosa | | | | | | |
-| F3 - N1 Pozas | Seguridad | | | | | | |
-| F4 - N1 Pozas | Cruzada | | | | | | |
+| F1 - N1 Pozas | Visible | Paso 8: sensores y actuadores | Con el DS18B20 a 22 °C la consola y HiveMQ muestran `"temp":71.6`. | `sensor.getTempFByIndex(0)` devuelve grados Fahrenheit; R1 define el umbral en 35 °C. | `getTempCByIndex(0)`. Commit `64a9c7f` (rama `bugfix/pozas-temp-celsius`). | Con 22 °C: antes `71.6`, después `22.0` en consola y HiveMQ. Evidencias: `evidencia/n1-pozas/f1-antes.png`, `f1-despues.png`. | Jefferson Castro / Samuel Bonifacio |
+| F2 - N1 Pozas | Silenciosa | Paso 10: procesamiento por nodo | Con 40 °C y gas bajo el umbral las pozas no ventilan. Sin broker el nodo deja de leer sensores y de accionar el relé (incumple R2). | El `else` de la condición de gas sobrescribe la de temperatura, y `conectar()` bloquea el `loop()` con `while` sin salida. Además publicaba sin validar la hora NTP. | `ventilar = gas>umbral \|\| temp>35 \|\| ventMax`, reconexión sin bloqueo cada 5 s y no se publica sin broker ni hora válida. Commit `10e8807` (rama `bugfix/pozas-accion-local`). | 40 °C con gas bajo el umbral: antes `OFF`, después `ON`. Broker inválido: antes la consola queda congelada (57 s sin lecturas), después lee y ventila cada 2 s y muestra `Sin broker u hora valida: no se publica`. Evidencias: `f2-antes-temp.png`, `f2-despues-temp.png`, `f2-antes-broker.png`, `f2-despues-broker.png`. | Jefferson Castro / Samuel Bonifacio |
+| F3 - N1 Pozas | Seguridad | Paso 4: capa de intercambio | Cualquiera que publique `UMBRAL:9000` en `upc/gc/pozas/cmd` cambia el umbral y apaga la ventilación (R10). | `alRecibir()` acepta `UMBRAL:` y `VENT:` sin firma, antigüedad ni rango. | Formato `<comando>\|<ts>\|<firma>` con HMAC de `pozas\|comando\|ts`, menos de 60 s y umbral entre 500 y 5000; rechazos publicados en `upc/gc/pozas/alerta`. Herramienta `nodos/n1-pozas/firmar_orden.py`. Commit `864a28c` (rama `bugfix/pozas-orden-firmada`). | Antes: `UMBRAL:9000` sin firma se acepta. Después: `UMBRAL:99999` da `Orden rechazada: formato`, una orden firmada vencida da `Orden rechazada: firma invalida o vencida` y `UMBRAL:5000` firmado se acepta. Evidencias: `f3-ataque-antes.png`, `f3-ataque-despues.png`, `f3-vencida-despues.png`, `f3-firmada-despues.png`. | Jefferson Castro / Samuel Bonifacio |
+| F4 - N1 Pozas | Cruzada | Paso 4: capa de intercambio (contrato de interfaz) | HiveMQ recibe datos de pozas, pero el gateway no puede usar el valor (el síntoma aparece en N5). | N1 publica `"valor":"8859.6ppm"` (texto con unidad) y firma esa cadena; el contrato exige `valor` numérico y firma sobre `id\|ts\|valor`. | `"valor":<número>` y firma sobre `pozas\|ts\|<número>`. Commit `3abbf5f` (rama `bugfix/pozas-valor-numerico`). | HiveMQ: antes `"valor":"8859.6ppm"`, después `"valor":8859.6`; la firma publicada `e245434e7f030ec9` coincide con HMAC(`pozas\|1795653319\|8859.6`). Pendiente confirmar en el gateway (N5). Evidencias: `f4-antes.png`, `f4-despues.png`. | Jefferson Castro (síntoma en N5) / Samuel Bonifacio |
 | F1 - N2 Secadores | Visible | | | | | | |
 | F2 - N2 Secadores | Silenciosa | | | | | | |
 | F3 - N2 Secadores | Seguridad | | | | | | |
@@ -153,7 +154,7 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | Modo seguro (R6)                        | Lavador sin mensajes 60 s                      | Lavador se enciende                               |           |           |
 | Ataque: sin firma / firma inválida (R9) | Publicar en `upc/gc/<nodo>/datos` desde HiveMQ | Gateway rechaza                                   |           |           |
 | Ataque: mensaje antiguo > 60 s (R9)     | Reenviar un dato viejo                         | Gateway rechaza                                   |           |           |
-| Ataque: orden falsa (R10)               | Publicar en `upc/gc/<nodo>/cmd`                | Nodo ignora                                       |           |           |
+| Ataque: orden falsa (R10)               | Publicar en `upc/gc/<nodo>/cmd`                | Nodo ignora                                       | N1 pozas: cumple. Orden sin firma y orden firmada vencida rechazadas; orden firmada vigente aceptada. Resto de nodos: pendiente | `evidencia/n1-pozas/f3-ataque-despues.png`, `f3-vencida-despues.png`, `f3-firmada-despues.png` |
 | Regresión final                         | Todos los escenarios anteriores                | Sin regresiones                                   |           |           |
 
 
@@ -172,8 +173,114 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
 | `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
 
+## 8. Evidencias
 
-## 8. Evidencia del tablero
+### N1 Pozas
 
-- Cierre de la sesión 1: _<captura>_
-- Cierre de la sesión 2: _<captura>_
+#### N1 F1: temperatura en Celsius
+
+**Antes: 22 °C se publica como 71.6** (`f1-antes.png`)
+
+<img src="evidencia/n1-pozas/f1-antes.png" alt="N1 Antes: 22 °C se publica como 71.6" width="800">
+
+**Después: se publica 22.0** (`f1-despues.png`)
+
+<img src="evidencia/n1-pozas/f1-despues.png" alt="N1 Después: se publica 22.0" width="800">
+
+#### N1 F2: acción local sin broker
+
+**Antes: 40 °C y ventilación apagada** (`f2-antes-temp.png`)
+
+<img src="evidencia/n1-pozas/f2-antes-temp.png" alt="N1 Antes: 40 °C y ventilación apagada" width="800">
+
+**Después: 40 °C y ventilación encendida** (`f2-despues-temp.png`)
+
+<img src="evidencia/n1-pozas/f2-despues-temp.png" alt="N1 Después: 40 °C y ventilación encendida" width="800">
+
+**Antes: broker inválido, sin lecturas** (`f2-antes-broker.png`)
+
+<img src="evidencia/n1-pozas/f2-antes-broker.png" alt="N1 Antes: broker inválido, sin lecturas" width="800">
+
+**Después: broker inválido, sigue ventilando** (`f2-despues-broker.png`)
+
+<img src="evidencia/n1-pozas/f2-despues-broker.png" alt="N1 Después: broker inválido, sigue ventilando" width="800">
+
+#### N1 F3: órdenes firmadas
+
+**Antes: se acepta una orden sin firma** (`f3-ataque-antes.png`)
+
+<img src="evidencia/n1-pozas/f3-ataque-antes.png" alt="N1 Antes: se acepta una orden sin firma" width="800">
+
+**Después: orden sin firma rechazada** (`f3-ataque-despues.png`)
+
+<img src="evidencia/n1-pozas/f3-ataque-despues.png" alt="N1 Después: orden sin firma rechazada" width="800">
+
+**Después: orden vencida rechazada** (`f3-vencida-despues.png`)
+
+<img src="evidencia/n1-pozas/f3-vencida-despues.png" alt="N1 Después: orden vencida rechazada" width="800">
+
+**Después: orden firmada aceptada** (`f3-firmada-despues.png`)
+
+<img src="evidencia/n1-pozas/f3-firmada-despues.png" alt="N1 Después: orden firmada aceptada" width="800">
+
+#### N1 F4: valor numérico
+
+**Antes: valor como texto con unidad** (`f4-antes.png`)
+
+<img src="evidencia/n1-pozas/f4-antes.png" alt="N1 Antes: valor como texto con unidad" width="800">
+
+**Después: valor numérico** (`f4-despues.png`)
+
+<img src="evidencia/n1-pozas/f4-despues.png" alt="N1 Después: valor numérico" width="800">
+
+### N4 Lavador
+
+#### N4 F1: pin del relé
+
+**Antes de la corrección** (`f1-antes.png`)
+
+<img src="evidencia/n4-lavador/f1-antes.png" alt="N4 Antes de la corrección" width="800">
+
+**Causa raíz** (`f1-causa-raiz.png`)
+
+<img src="evidencia/n4-lavador/f1-causa-raiz.png" alt="N4 Causa raíz" width="800">
+
+**Después de la corrección** (`f1-despues.png`)
+
+<img src="evidencia/n4-lavador/f1-despues.png" alt="N4 Después de la corrección" width="800">
+
+**Después: orden OFF** (`f1-despues-off.png`)
+
+<img src="evidencia/n4-lavador/f1-despues-off.png" alt="N4 Después: orden OFF" width="800">
+
+#### N4 F2: modo seguro
+
+**Antes de la corrección** (`f2-antes.png`)
+
+<img src="evidencia/n4-lavador/f2-antes.png" alt="N4 Antes de la corrección" width="800">
+
+**Inicio de la prueba** (`f2-inicio-prueba.png`)
+
+<img src="evidencia/n4-lavador/f2-inicio-prueba.png" alt="N4 Inicio de la prueba" width="800">
+
+**Después: modo seguro activado** (`f2-despues.png`)
+
+<img src="evidencia/n4-lavador/f2-despues.png" alt="N4 Después: modo seguro activado" width="800">
+
+#### N4 F3: órdenes firmadas (rama `bugfix/n4-lavador-ordenes-firmadas`, sin integrar)
+
+**Antes: ataque** (`f3-ataque-antes.png`)
+
+<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-ataque-antes.png" alt="N4 Antes: ataque" width="800">
+
+**Después: ataque rechazado** (`f3-ataque-despues.png`)
+
+<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-ataque-despues.png" alt="N4 Después: ataque rechazado" width="800">
+
+**Después: OFF ignorado con concentración alta** (`f3-conc-alta-despues.png`)
+
+<img src="https://raw.githubusercontent.com/16518-IoT-PrimeFuel/lab4-IoT/c8f9fc206b8299435042fa516d2148585f0026b0/evidencia/n4-lavador/f3-conc-alta-despues.png" alt="N4 Después: OFF ignorado con concentración alta" width="800">
+
+### N2 Secadores, N3 Perímetro y N5 Gateway
+
+_Sin imágenes de evidencia en el repositorio._

@@ -10,8 +10,7 @@
   <p><strong>Sanchez Portugal, Jimmy Enrique</strong></p>
   <p>Equipo</p>
   <p><strong>PrimeFuel</strong></p>
-  <p>Grupo</p>
-  <p><strong>G3 (prefijo <code>gc</code>)</strong></p>
+  <p>Grupo 2</p>
 </div>
 
 
@@ -160,23 +159,21 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 ## 7. Ramas y pull requests
 
-| Rama               | PR   | Revisor | Estado |
-| ------------------ | ---- | ------- | ------ |
-| `bugfix/pozas-...` |      |         |        |
-| `bugfix/perimetro-viento-adc` |      |         |        |
-| `bugfix/perimetro-reconexion-y-hora` |      |         |        |
-| `bugfix/perimetro-orden-firmada` |      |         |        |
+| Rama | PR | Commits | Falla / contenido | Autor (GitHub) | Revisor (rotación) | Estado |
+| ---- | -- | ------- | ----------------- | -------------- | ------------------ | ------ |
+| `bugfix/n1-pozas` | — | — | Sin commits propios (ya contenida en `main`) | JeffersonCastroPariona | — | Sin cambios frente a `main` |
+| `bugfix/pozas-temp-celsius` | — | `d0e23ee`, `3bad2af` | N1 F1: temperatura en grados Celsius, con evidencias | JeffersonCastroPariona | samuelbonifacio015 | Publicada, sin PR |
+| `bugfix/pozas-accion-local` | — | `4d5ff04`, `310a330` | N1 F2: ventilación por gas o temperatura sin depender del broker, con evidencias (incluye F1) | JeffersonCastroPariona | samuelbonifacio015 | Publicada, sin PR |
+| `bugfix/pozas-orden-firmada` | — | `ea350d3`, `1cd8c58` | N1 F3: valida firma HMAC y antigüedad de las órdenes, con evidencias (incluye F1 y F2) | JeffersonCastroPariona | samuelbonifacio015 | Publicada, sin PR |
+| `bugfix/pozas-valor-numerico` | — | `4f69da5`, `3c637bf` | N1 F4: publica el valor numérico según el contrato, con evidencias (incluye F1 a F3) | JeffersonCastroPariona | samuelbonifacio015 | Publicada, sin PR |
+| `docs/n1-pozas-bitacora` | — | `04597b8` | Bitácora F1 a F4 de N1 | JeffersonCastroPariona | samuelbonifacio015 | Publicada, sin PR |
+| `bugfix/n4-lavador-pin-rele` | [#1](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/1) | `bf07c5c`, `b230c4d` | N4: archivos base y F1 (pin del relé) | schneiderdc | aponceperales | Abierto hacia `main`, sin revisiones |
+| `bugfix/n4-lavador-modo-seguro` | [#2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2) | `70c141b` | N4 F2: modo seguro (incluye F1) | schneiderdc | aponceperales | Abierto hacia `bugfix/n4-lavador-pin-rele`, sin revisiones |
+| `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `bugfix/n4-lavador-modo-seguro` |
+| `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Abierto hacia `main`, sin revisiones |
+
 
 ## 8. Evidencia del tablero
 
 - Cierre de la sesión 1: _<captura>_
 - Cierre de la sesión 2: _<captura>_
-
-## 9. Exposición
-
-| Bloque       | Quién           | Contenido                                                    | Tiempo           |
-| ------------ | --------------- | ------------------------------------------------------------ | ---------------- |
-| Apertura     | Integrador      | Estado inicial y resumen de fallas encontradas               | 1,5 min          |
-| Fallas       | Cada integrante | La falla más difícil de su nodo: síntoma, causa raíz y prueba | 25 s por persona |
-| Demostración | Integrador      | Pico de emisión con viento hacia la comunidad, lavador confirmado y un ataque rechazado | 2,5 min          |
-| Preguntas    | Docente         | A cualquier integrante                                       | 2 min            |

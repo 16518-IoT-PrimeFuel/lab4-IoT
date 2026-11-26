@@ -17,9 +17,20 @@ Adafruit_NeoPixel pixel(1, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
 WiFiClient net;
 PubSubClient mqtt(net);
 
-float gasPozas = 0, gasSecadores = 0, gasPerimetro = 0;
+// Cada lectura guarda cuando llego (millis); una lectura vieja no decide nada
+struct Lectura {
+  float valor = 0;
+  unsigned long rxMs = 0;
+  bool recibida = false;
+};
+Lectura pozas, secadores, perimetro;
 int viento = 0;
 bool lavadorOn = false, alerta = false;
+const unsigned long CADUCIDAD_MS = 10000;   // decision del grupo, no de la especificacion
+
+bool fresco(const Lectura& l) {
+  return l.recibida && millis() - l.rxMs < CADUCIDAD_MS;
+}
 
 String firmar(const String& m) {
   byte out[32];
@@ -86,9 +97,13 @@ void alRecibir(char* t, byte* p, unsigned int n) {
   }
 
   float v = valor.toFloat();
-  if (id == "pozas") gasPozas = v;
-  else if (id == "secadores") gasSecadores = v;
-  else if (id == "perimetro") { gasPerimetro = v; viento = campo(msg, "viento").toInt(); }
+  Lectura nueva = {v, millis(), true};
+  if (id == "pozas") pozas = nueva;
+  else if (id == "secadores") secadores = nueva;
+  else if (id == "perimetro") {
+    perimetro = nueva;
+    viento = campo(msg, "viento").toInt();
+  }
   Serial.println("OK " + id + ": " + String(v, 1) + " ppm");
 }
 
@@ -111,8 +126,8 @@ void enviarThingSpeak() {
   if (String(TS_KEY) == "TU_WRITE_KEY") return;
   HTTPClient http;
   http.begin("http://api.thingspeak.com/update?api_key=" + String(TS_KEY) +
-             "&field1=" + String(gasPozas) + "&field2=" + String(gasSecadores) +
-             "&field3=" + String(gasPerimetro) + "&field4=" + String(viento) +
+             "&field1=" + String(pozas.valor) + "&field2=" + String(secadores.valor) +
+             "&field3=" + String(perimetro.valor) + "&field4=" + String(viento) +
              "&field5=" + String(lavadorOn ? 1 : 0));
   http.GET();
   http.end();
@@ -151,9 +166,17 @@ void loop() {
 
   if (millis() - tDecision >= 2000) {
     tDecision = millis();
-    bool haciaComunidad = (viento >= 90 && viento <= 180);
-    int confirmaciones = (gasPozas > UMBRAL_GAS) + (gasSecadores > UMBRAL_GAS) + (gasPerimetro > UMBRAL_GAS);
-    float conc = max(gasPozas, max(gasSecadores, gasPerimetro));
+    bool pozasOK = fresco(pozas), secOK = fresco(secadores), perOK = fresco(perimetro);
+    bool todosFrescos = pozasOK && secOK && perOK;
+    bool haciaComunidad = perOK && viento >= 90 && viento <= 180;
+    // Solo cuentan los sensores frescos; un dato caducado no confirma nada
+    int confirmaciones = (pozasOK && pozas.valor > UMBRAL_GAS) +
+                         (secOK && secadores.valor > UMBRAL_GAS) +
+                         (perOK && perimetro.valor > UMBRAL_GAS);
+    float conc = 0;
+    if (pozasOK) conc = max(conc, pozas.valor);
+    if (secOK) conc = max(conc, secadores.valor);
+    if (perOK) conc = max(conc, perimetro.valor);
     mqtt.publish("upc/gc/gateway/conc", String(conc, 1).c_str());
 
     // Regla combinada (fog)
@@ -161,7 +184,7 @@ void loop() {
       mqtt.publish("upc/gc/lavador/cmd", "ON", true);
       lavadorOn = true;
       Serial.println("Orden: lavador ON");
-    } else if (lavadorOn && conc < UMBRAL_GAS * 0.8) {
+    } else if (lavadorOn && todosFrescos && conc < UMBRAL_GAS * 0.8) {
       mqtt.publish("upc/gc/lavador/cmd", "OFF", true);
       lavadorOn = false;
       Serial.println("Orden: lavador OFF");

@@ -162,17 +162,17 @@ Tiempo desde la detección hasta la confirmación del lavador (R5: máximo 10 s)
 
 | Rama | PR | Commits | Falla / contenido | Autor (GitHub) | Revisor (rotación) | Estado |
 | ---- | -- | ------- | ----------------- | -------------- | ------------------ | ------ |
-| `bugfix/n1-pozas` | — | — | Sin commits propios (ya contenida en `main`) | JeffersonCastroPariona | — | Sin cambios frente a `main` |
+| `bugfix/n1-pozas` | [#10](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/10) | `47a0d05` | N1: anexo de evidencias en el README | samuelbonifacio015 | — | Mergeado, sin revisiones |
 | `bugfix/pozas-temp-celsius` | [#9](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/9) | `64a9c7f`, `b2db61f` | N1 F1: temperatura en grados Celsius, con evidencias | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
 | `bugfix/pozas-accion-local` | [#7](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/7) | `10e8807`, `a3c1231` | N1 F2: ventilación por gas o temperatura sin depender del broker, con evidencias (incluye F1) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
 | `bugfix/pozas-orden-firmada` | [#4](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/4) | `864a28c`, `8167c24` | N1 F3: valida firma HMAC y antigüedad de las órdenes, con evidencias (incluye F1 y F2) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
 | `bugfix/pozas-valor-numerico` | [#5](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/5) | `3abbf5f`, `2f909d4` | N1 F4: publica el valor numérico según el contrato, con evidencias (incluye F1 a F3) | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
-| `docs/n1-pozas-bitacora` | [#8](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/8) | `4faf55e` | Bitácora F1 a F4 de N1 | JeffersonCastroPariona | samuelbonifacio015 | Abierto, sin revisiones; conflicto con `main` resuelto |
+| `docs/n1-pozas-bitacora` | [#8](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/8) | `4faf55e`, `8275fe6` | Bitácora F1 a F4 de N1 | JeffersonCastroPariona | samuelbonifacio015 | Mergeado, sin revisiones |
 | `bugfix/n4-lavador-pin-rele` | [#1](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/1) | `bf07c5c`, `b230c4d` | N4: archivos base y F1 (pin del relé) | schneiderdc | aponceperales | Mergeado, sin revisiones |
 | `bugfix/n4-lavador-modo-seguro` | [#2](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/2) | `97e9948` | N4 F2: modo seguro (incluye F1) | schneiderdc | aponceperales | Mergeado, sin revisiones |
 | `bugfix/n4-lavador-ordenes-firmadas` | — | `71c3411`, `c8f9fc2` | N4 F3: órdenes firmadas y bloqueo de apagado con concentración alta, con evidencias | CarlosAlb101 | schneiderdc | Publicada, sin PR; en conflicto con `main` |
 | `docs/n4-lavador-bitacora` | [#3](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/3) | `e98d23f`, `4a1bb38` | Bitácora F1 a F4 de N4 | schneiderdc, CarlosAlb101 | aponceperales | Mergeado, sin revisiones |
-| `bugfix/n2-secadores` | — | — | N2: archivos base, evidencia inicial y registro de fallas | KathMJ | JeffersonCastroPariona | Sin publicar en GitHub |
+| `bugfix/n2-secadores` | [#11](https://github.com/16518-IoT-PrimeFuel/lab4-IoT/pull/11) | `4071165`, `5a157d1`, `589a845` | N2: archivos base, evidencia inicial y registro de fallas | KathMJ (commits), samuelbonifacio015 (PR) | JeffersonCastroPariona | Mergeado, sin revisiones |
 
 ## 8. Evidencias
 

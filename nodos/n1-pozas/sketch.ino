@@ -3,6 +3,7 @@
 //   F1 (visible)    temperatura en Celsius (DS18B20)
 //   F2 (silenciosa) accion local autonoma: temp OR gas, sin bloquear por WiFi/MQTT, sin publicar sin hora NTP
 //   F3 (seguridad)  ordenes firmadas HMAC y con antiguedad < 60 s (R10)
+//   F4 (cruzada)    campo "valor" numerico y firma sobre id|ts|valor (contrato de interfaz)
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <OneWire.h>
@@ -134,9 +135,10 @@ void loop() {
     return;
   }
 
-  String v = String(gas, 1) + "ppm";
-  String msg = "{\"id\":\"pozas\",\"ts\":" + String(ts) + ",\"valor\":\"" + v +
-               "\",\"unidad\":\"ppm\",\"temp\":" + String(temp, 1) +
+  // F4: "valor" numerico (sin "ppm" ni comillas) y firma sobre id|ts|valor
+  String v = String(gas, 1);
+  String msg = "{\"id\":\"pozas\",\"ts\":" + String(ts) + ",\"valor\":" + v +
+               ",\"unidad\":\"ppm\",\"temp\":" + String(temp, 1) +
                ",\"calidad\":\"ok\",\"firma\":\"" + firmar("pozas|" + String(ts) + "|" + v) + "\"}";
   mqtt.publish(T_DATOS, msg.c_str());
   Serial.println(msg);

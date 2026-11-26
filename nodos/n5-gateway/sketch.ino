@@ -55,6 +55,20 @@ String ordenPozas(const String& comando) {
   return comando + "|" + String(ts) + "|" + firmar("pozas|" + comando + "|" + String(ts));
 }
 
+// Estado real del lavador: lo publica N4 (CONFIRMADO tras encender, OFF al apagar)
+void procesarEstadoLavador(const String& msg) {
+  Serial.println("Estado lavador: " + msg);
+  if (msg.indexOf("CONFIRMADO") >= 0) {
+    lavadorOn = true;
+    ordenPendiente = false;
+    Serial.println("Lavador CONFIRMADO: ON");
+  } else if (msg.indexOf("\"lavador\":\"OFF\"") >= 0) {
+    lavadorOn = false;
+    ordenPendiente = false;
+    Serial.println("Lavador confirmado: OFF");
+  }
+}
+
 // Extrae el texto de un campo del JSON
 String campo(const String& m, const char* k) {
   String key = "\"" + String(k) + "\":";
@@ -80,9 +94,7 @@ void alRecibir(char* t, byte* p, unsigned int n) {
     return;
   }
   if (topico.endsWith("/estado")) {
-    Serial.println("Estado lavador: " + msg);
-    // Confirmacion de N4 cierra la espera de la orden
-    if (msg.indexOf("CONFIRMADO") >= 0 || msg.indexOf("\"lavador\":\"OFF\"") >= 0) ordenPendiente = false;
+    procesarEstadoLavador(msg);
     return;
   }
 
@@ -201,13 +213,11 @@ void loop() {
     // Regla combinada (fog)
     if (!lavadorOn && !ordenPendiente && confirmaciones >= 2 && haciaComunidad) {
       mqtt.publish("upc/gc/lavador/cmd", "ON", true);
-      lavadorOn = true;
       ordenPendiente = true;
       tOrden = millis();
       Serial.println("Orden: lavador ON (esperando confirmacion)");
     } else if (lavadorOn && !ordenPendiente && todosFrescos && conc < UMBRAL_GAS * 0.8) {
       mqtt.publish("upc/gc/lavador/cmd", "OFF", true);
-      lavadorOn = false;
       ordenPendiente = true;
       tOrden = millis();
       Serial.println("Orden: lavador OFF (esperando confirmacion)");
